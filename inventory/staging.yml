@@ -7,8 +7,5 @@ all:
       worker.local:
   hosts:
     control-plane.local:
-      ansible_host: 192.168.50.10
     worker.local:
-      ansible_host: 192.168.50.11
     nas.local:
-      ansible_host: 192.168.50.12
