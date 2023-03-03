@@ -1,12 +1,14 @@
-- name: Check for jumpcloud
-  ansible.builtin.stat:
-    path: /opt/jc/client.key
-  register: jumpcloud_client_key
-  changed_when: false
-
-- name: Install jumpcloud agent
-  ansible.builtin.shell: "curl --tlsv1.2 --silent --show-error --header 'x-connect-key: {{ jumpcloud_install_key }}' https://kickstart.jumpcloud.com/Kickstart | sudo bash"
-  when: jumpcloud_client_key.stat.exists is defined and not jumpcloud_client_key.stat.exists
+- name: Configure jumpcloud
+  when: jumpcloud_install_key is defined and jumpcloud_install_key
+  block:
+  - name: Check for jumpcloud
+    ansible.builtin.stat:
+      path: /opt/jc/client.key
+    register: jumpcloud_client_key
+    changed_when: false
+  - name: Install jumpcloud agent
+    ansible.builtin.shell: "curl --tlsv1.2 --silent --show-error --header 'x-connect-key: {{ jumpcloud_install_key }}' https://kickstart.jumpcloud.com/Kickstart | sudo bash"
+    when: jumpcloud_client_key.stat.exists is defined and not jumpcloud_client_key.stat.exists
 
 - name: Create downloads group with gid 911
   ansible.builtin.group:
