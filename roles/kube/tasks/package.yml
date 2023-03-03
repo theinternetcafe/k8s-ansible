@@ -1,0 +1,17 @@
+---
+- name: Kubernetes
+  ansible.builtin.yum_repository:
+    name: kubernetes
+    description: Kubernetes
+    baseurl: "https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch"
+    gpgkey: "https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg"
+    gpgcheck: yes
+    enabled: yes
+    exclude: "kubelet kubeadm kubectl"
+
+- name: Install kube packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: installed
+    disable_excludes: all
+  with_items: "{{ kube_packages }}"

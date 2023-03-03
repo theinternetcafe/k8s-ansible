@@ -1,0 +1,27 @@
+---
+- name: Package
+  include_tasks: 
+    file: package.yml
+    apply:
+      tags:
+        - package
+  tags:
+  - package
+
+- name: Containerd
+  include_tasks: 
+    file: containerd.yml
+    apply:
+      tags:
+        - containerd
+  tags:
+  - containerd
+
+- name: Kubelet
+  include_tasks: 
+    file: kubelet.yml
+    apply:
+      tags:
+        - kubelet
+  tags:
+  - kubelet

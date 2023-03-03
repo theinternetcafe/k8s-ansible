@@ -1,0 +1,13 @@
+---
+exports: []
+mounts:
+  - path: /mnt/warm
+    src: 192.168.50.12:/mnt/warm
+    fstype: nfs
+    opts: "auto,nofail,noatime,nolock,intr,tcp,actimeo=1800"
+    state: mounted
+  - path: /mnt/hot
+    src: 192.168.50.12:/mnt/hot
+    fstype: nfs
+    opts: "auto,nofail,noatime,nolock,intr,tcp,actimeo=1800"
+    state: mounted

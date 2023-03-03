@@ -1,0 +1,47 @@
+---
+- name: Package
+  include_tasks: 
+    file: package.yml
+    apply:
+      tags:
+        - package
+  tags:
+  - package
+
+- name: Nvidia
+  include_tasks: 
+    file: nvidia.yml
+    apply:
+      tags:
+        - nvidia
+  tags:
+  - nvidia
+  when: gpu_manufacturer == 'nvidia'
+
+- name: Storage
+  include_tasks: 
+    file: storage.yml
+    apply:
+      tags:
+        - storage
+  tags:
+  - storage
+
+- name: Network
+  include_tasks: 
+    file: network.yml
+    apply:
+      tags:
+        - network
+  tags:
+  - network
+
+- name: Auth
+  include_tasks: 
+    file: auth.yml
+    apply:
+      tags:
+        - auth
+  tags:
+  - auth
+

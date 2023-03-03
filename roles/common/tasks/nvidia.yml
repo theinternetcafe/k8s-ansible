@@ -1,0 +1,66 @@
+---
+- name: cuda-rhel9 Repo setup
+  ansible.builtin.yum_repository:
+    name: cuda-rhel9
+    description: cuda dependencies which are needed for nvidia drivers
+    baseurl: https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64
+    gpgcheck: true
+    gpgkey: https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/D42D0685.pub
+
+- name: Install the 'Development tools' package group needed to build drivers
+  ansible.builtin.dnf:
+    name: '@Development tools'
+    state: present
+
+- name: Clean DNF Caches
+  ansible.builtin.command: dnf clean all
+
+- name: Install CUDA
+  ansible.builtin.dnf:
+    enablerepo: epel
+    name: cuda
+    state: present
+
+- name: Copy libcuda.so.1 into /usr/local/cuda/lib64 directory for Plex container mount
+  ansible.builtin.file:
+    src: /usr/lib64/libcuda.so.515.86.01
+    dest: /usr/local/cuda/lib64/libcuda.so.1
+    owner: root
+    group: downloads
+    mode: '0644'
+    state: hard
+
+- name: Download drivers for the card itself
+  ansible.builtin.get_url:
+    url: https://us.download.nvidia.com/XFree86/Linux-x86_64/515.86.01/NVIDIA-Linux-x86_64-515.86.01.run
+    dest: /root/NVIDIA-Linux-x86_64-515.86.01.run
+    owner: root
+    group: root
+    mode: '0755'
+    checksum: sha256:141777e1ca2f11e97d8d33260213f1be327eb73922ae22f4ddab404bb2ef4664
+
+- name: Check to see if nvidia is loaded
+  ansible.builtin.shell: "lsmod | grep nvidia"
+  changed_when: false
+  register: nvidia_loaded
+
+- name: Install the drivers
+  when: nvidia_loaded.rc == '1'
+  block:
+  - name: Install the drivers
+    ansible.builtin.command: "./NVIDIA-Linux-x86_64-515.86.01.run --disable-nouveau --dkms --accept-license --no-questions"
+  - name: Update initramfs with nouveau blacklist
+    ansible.builtin.command: "dracut --force"
+
+- name: libnvidia-container Repo setup
+  ansible.builtin.yum_repository:
+    name: libnvidia-container
+    description: nvidia-container dependencies which are needed for passing gpu through CRI
+    baseurl: https://nvidia.github.io/libnvidia-container/stable/centos7/$basearch
+    gpgcheck: true
+    gpgkey: https://nvidia.github.io/libnvidia-container/gpgkey
+
+- name: Install nvidia-container-toolkit
+  ansible.builtin.dnf:
+    name: nvidia-container-toolkit
+    state: present

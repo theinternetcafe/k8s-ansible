@@ -1,0 +1,11 @@
+---
+# defaults file for kube
+kube_packages:
+  - containerd.io
+  - kubeadm-1.25.3
+  - kubectl-1.25.3
+  - kubelet-1.25.3
+kube_ports:
+  - 6443/tcp # kube-apiserver
+  - 2379-2380/tcp # kube-etcd
+  - 10250-10252/tcp # kubelet

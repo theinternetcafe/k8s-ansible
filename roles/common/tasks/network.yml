@@ -1,0 +1,30 @@
+- name: Overlay Module
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - overlay
+    - br_netfilter
+
+- name: Create kube-deps.conf
+  ansible.builtin.copy:
+    content: "overlay\nbr_netfilter"
+    dest: /etc/modules-load.d/kube-deps.conf
+
+- name: IP Forwarding
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+  with_items:
+    - net.ipv4.ip_forward
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.bridge.bridge-nf-call-iptables
+
+- name: Custom Firewall Ports Enabled
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  with_items: "{{ common_ports }}"
+  when: commond_ports is defined and common_ports

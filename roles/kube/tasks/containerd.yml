@@ -1,0 +1,15 @@
+---
+- name: Set containerd config
+  ansible.builtin.template:
+    src: containerd-config.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart containerd
+
+- name: Enable containerd service
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: true

@@ -1,0 +1,35 @@
+---
+- name: Create shared mounts
+  ansible.posix.mount:
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.opts }}"
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    state: "{{ item.state }}"
+  loop: "{{ mounts + shared_mounts }}"
+
+- name: Remove swap
+  ansible.posix.mount:
+    name: swap
+    fstype: swap
+    state: unmounted
+
+- name: NFS
+  when: exports is defined and exports
+  block:
+  - name: Create exports
+    ansible.builtin.lineinfile:
+      path: /etc/exports
+      state: present
+      line: "{{ item }}"
+    with_items: "{{ exports }}"
+    when: exports is defined and exports
+    notify: restart nfs
+  - name: Install nfs-server
+    ansible.builtin.package:
+      name: nfs-utils
+      state: latest
+    notify: restart nfs
+  - ansible.builtin.service:
+      name: nfs-server
+      state: started

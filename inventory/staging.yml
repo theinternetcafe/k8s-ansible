@@ -1,0 +1,11 @@
+---
+all:
+  children:
+    control_plane:
+      control-plane.local:
+    downloader:
+      worker.local:
+  hosts:
+    control-plane.local:
+    worker.local:
+    nas.local:

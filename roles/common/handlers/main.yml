@@ -1,0 +1,8 @@
+---
+# handlers file for common
+- name: restart nfs
+  ansible.builtin.service:
+    name: nfs-server
+    state: restarted
+- name: dnf makecache
+  ansible.builtin.command: "dnf makecache --refresh"
