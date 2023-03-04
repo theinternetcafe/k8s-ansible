@@ -4,7 +4,7 @@ ansible_ssh_user: vagrant
 exports:
   - /mnt/warm 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)
   - /mnt/hot 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)
-mounts:
+mounts: []
 #  - path: /mnt/warm 
 #    src: /dev/md/nas:warm
 #    fstype: xfs
