@@ -1,15 +1,14 @@
 ---
-ansible_host: 192.168.50.11
 ansible_ssh_user: vagrant
 exports: []
 mounts:
   - path: /mnt/warm
-    src: 192.168.50.12:/mnt/warm
+    src: nas.local:/mnt/warm
     fstype: nfs
     opts: "auto,nofail,noatime,nolock,intr,tcp,actimeo=1800"
     state: mounted
   - path: /mnt/hot
-    src: 192.168.50.12:/mnt/hot
+    src: nas.local:/mnt/hot
     fstype: nfs
     opts: "auto,nofail,noatime,nolock,intr,tcp,actimeo=1800"
     state: mounted
