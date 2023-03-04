@@ -1,8 +1,6 @@
 ---
 ansible_host: 192.168.50.10
 ansible_ssh_user: vagrant
-become: true
-become_method: sudo
 exports: []
 mounts:
   - path: /mnt/warm
