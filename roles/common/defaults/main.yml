@@ -6,3 +6,9 @@ common_packages:
   - git
   - nfs-utils
   - tar
+common_ports:
+  - 22/tcp
+  - 111/tcp  # nfs-server
+  - 111/udp  # nfs-server
+  - 2049/tcp # nfs-server
+  - 2049/udp # nfs-server

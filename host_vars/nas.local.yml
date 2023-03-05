@@ -1,16 +1,16 @@
 ---
 ansible_ssh_user: vagrant 
 exports:
-  - /mnt/warm 0.0.0.0/0(rw,sync,no_subtree_check,no_root_squash)
-  - /mnt/hot 0.0.0.0/0(rw,sync,no_subtree_check,no_root_squash)
-mounts: []
-#  - path: /mnt/warm 
-#    src: /dev/md/nas:warm
-#    fstype: xfs
-#    opts: "rw,noatime"
-#    state: present
-#  - path: /mnt/hot 
-#    src: /dev/md/nas:hot
-#    fstype: xfs
-#    opts: "rw,noatime"
-#    state: present
+  - /mnt/warm *(rw,sync,no_subtree_check,no_root_squash)
+  - /mnt/hot *(rw,sync,no_subtree_check,no_root_squash)
+mounts:
+  - path: /mnt/warm 
+    src: tmpfs
+    fstype: tmpfs
+    opts: "size=512m"
+    state: mounted
+  - path: /mnt/hot 
+    src: tmpfs
+    fstype: tmpfs
+    opts: "size=512m"
+    state: mounted

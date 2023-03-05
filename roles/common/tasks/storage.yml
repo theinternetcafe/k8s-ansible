@@ -1,5 +1,11 @@
 ---
-- name: Create shared mounts
+- name: Create shared mount directory
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: 0755
+  loop: "{{ mounts + shared_mounts }}"
+- name: Create shared mount
   ansible.posix.mount:
     fstype: "{{ item.fstype }}"
     opts: "{{ item.opts }}"
@@ -13,6 +19,10 @@
     name: swap
     fstype: swap
     state: unmounted
+
+- name: Run swapoff
+  ansible.builtin.shell: swapoff -a
+  when: ansible_swaptotal_mb > 0
 
 - name: NFS
   when: exports is defined and exports

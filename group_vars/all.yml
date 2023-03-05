@@ -1,18 +1,11 @@
 ---
 kube:
-  version: 1.25.6
+  version: 1.26.1
 gpu_manufacturer: null
 ansible_ssh_user: root
 base_packages:
   - tar
   - python3-pip
   - nfs-utils
-ports:
-  - 80/tcp    # http
-  - 443/tcp   # https
-  - 4240/tcp  # cilium-control
-  - 8472/udp  # cilium-vxlan
-  - 32000/tcp # dex
-  - 32400/tcp # plex
 jumpcloud_install_key: null
 shared_mounts: []
