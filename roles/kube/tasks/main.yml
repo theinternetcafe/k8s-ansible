@@ -25,3 +25,12 @@
         - kubelet
   tags:
   - kubelet
+
+- name: HAProxy
+  include_tasks: 
+    file: haproxy.yml
+    apply:
+      tags:
+        - haproxy
+  tags:
+  - haproxy

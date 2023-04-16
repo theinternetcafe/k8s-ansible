@@ -5,3 +5,8 @@ cgroupDriver: "systemd"
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 kubernetesVersion: "{{ kube.version }}"
+controlPlaneEndpoint: "127.0.0.1:8443"
+apiServer:
+  certSANs:
+    - "127.0.0.1"
+    - "k8s-api.cloud-fortress.net"

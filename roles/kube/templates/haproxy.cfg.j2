@@ -1,0 +1,26 @@
+defaults
+    maxconn 20000
+    mode    tcp
+    option  dontlognull
+    timeout http-request 10s
+    timeout queue        1m
+    timeout connect      10s
+    timeout client       86400s
+    timeout server       86400s
+    timeout tunnel       86400s
+
+frontend k8s-control-plane-frontend
+    bind {{ haproxy_frontend_ip }}:{{ haproxy_frontend_port }}
+    default_backend k8s-control-plane-backend
+    mode tcp
+
+backend k8s-control-plane-backend
+    option  httpchk GET /readyz HTTP/1.0
+    option  log-health-checks
+    http-check expect status 200
+    mode tcp
+    balance roundrobin
+    default-server verify none check-ssl inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 5000 maxqueue 5000 weight 100
+{% for host in groups['control_plane'] %}
+    server {{ host }} {{ host }}:{{ control_plane_port }} check
+{% endfor %}
