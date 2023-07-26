@@ -1,0 +1,6 @@
+- name: Run kubeadm_join_command on all nodes
+  ansible.builtin.shell: "{{ kubeadm_join_command.stdout }}"
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+  when: kubeadm_join_command is defined

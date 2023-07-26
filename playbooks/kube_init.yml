@@ -1,0 +1,9 @@
+---
+- hosts: "{{ groups['control_plane'][0] }}"
+  become: true
+  become_method: sudo
+  become_user: root
+  roles:
+    - kube
+  vars:
+    action: init
