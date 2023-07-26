@@ -27,3 +27,13 @@
     immediate: yes
     state: enabled
   with_items: "{{ common_ports }}"
+
+- name: Disable NetworkManager control of DNS
+  ansible.builtin.template:
+    src: 90-disable-nm-dns.conf.j2
+    dest: /etc/NetworkManager/conf.d/90-disable-nm-dns.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart NetworkManager
+  

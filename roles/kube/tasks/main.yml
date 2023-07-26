@@ -1,10 +1,29 @@
 ---
+- name: Action
+  include_tasks: 
+    file: "{{ action }}.yml"
+    apply:
+      tags:
+        - "{{ action }}"
+  when: action is defined
+
+- name: Network
+  include_tasks: 
+    file: network.yml
+    apply:
+      tags:
+        - network
+  when: action is not defined
+  tags:
+  - network
+
 - name: Package
   include_tasks: 
     file: package.yml
     apply:
       tags:
         - package
+  when: action is not defined
   tags:
   - package
 
@@ -14,6 +33,7 @@
     apply:
       tags:
         - containerd
+  when: action is not defined
   tags:
   - containerd
 
@@ -23,6 +43,7 @@
     apply:
       tags:
         - kubelet
+  when: action is not defined
   tags:
   - kubelet
 
@@ -32,5 +53,6 @@
     apply:
       tags:
         - haproxy
+  when: action is not defined
   tags:
   - haproxy

@@ -6,3 +6,7 @@
     state: restarted
 - name: dnf makecache
   ansible.builtin.command: "dnf makecache --refresh"
+- name: restart NetworkManager
+  ansible.builtin.service:
+    name: NetworkManager
+    state: restarted
