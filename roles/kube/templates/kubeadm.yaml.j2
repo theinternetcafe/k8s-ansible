@@ -9,4 +9,9 @@ controlPlaneEndpoint: "127.0.0.1:8443"
 apiServer:
   certSANs:
     - "127.0.0.1"
+    - "10.96.0.2"
     - "k8s-api.cloud-fortress.net"
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 172.16.0.0/16
+  serviceSubnet: 10.96.0.0/12

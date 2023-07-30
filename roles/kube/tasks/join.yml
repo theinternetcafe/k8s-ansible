@@ -1,6 +1,7 @@
 - name: Run kubeadm_join_command on all nodes
-  ansible.builtin.shell: "{{ kubeadm_join_command.stdout }}"
-  changed_when: false
-  failed_when: false
-  ignore_errors: true
-  when: kubeadm_join_command is defined
+  ansible.builtin.shell: "{{ kubeadm_join_command }}"
+  when: inventory_hostname not in groups['control_plane']
+
+- name: Run kubeadm_join_command_control_plane on control plane nodes
+  ansible.builtin.shell: "{{ kubeadm_join_command_control_plane }}"
+  when: inventory_hostname in groups['control_plane'] and inventory_hostname != groups['control_plane'][0]

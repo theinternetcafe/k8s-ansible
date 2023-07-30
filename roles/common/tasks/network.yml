@@ -20,6 +20,12 @@
     - net.bridge.bridge-nf-call-ip6tables
     - net.bridge.bridge-nf-call-iptables
 
+- name: Enable Firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: yes
+
 - name: Common Firewall Ports Enabled
   ansible.posix.firewalld:
     port: "{{ item }}"
@@ -37,3 +43,18 @@
     mode: '0644'
   notify: restart NetworkManager
   
+- name: Enable nameservers
+  ansible.builtin.template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable hosts file
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'

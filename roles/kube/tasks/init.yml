@@ -1,3 +1,4 @@
+---
 - name: Create kubeadm.yaml in /root/ for kubeadm init
   ansible.builtin.template:
     src: kubeadm.yaml.j2
@@ -7,7 +8,7 @@
     mode: '0600'
 
 - name: Initialize Kubernetes Cluster
-  ansible.builtin.shell: kubeadm init --config /root/kubeadm.yaml
+  ansible.builtin.shell: kubeadm init --config /root/kubeadm.yaml --skip-phases=addon/kube-proxy
   args:
     creates: /etc/kubernetes/admin.conf
   register: kubeadm_init

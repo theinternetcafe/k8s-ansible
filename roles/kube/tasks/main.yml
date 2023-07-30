@@ -56,3 +56,13 @@
   when: action is not defined
   tags:
   - haproxy
+
+- name: Security
+  include_tasks: 
+    file: security.yml
+    apply:
+      tags:
+        - security
+  when: action is not defined
+  tags:
+  - security

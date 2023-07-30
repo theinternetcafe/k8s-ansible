@@ -1,0 +1,20 @@
+---
+- name: Kubernetes Firewall Ports Enabled
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  with_items: "{{ kube_ports }}"
+
+- name: Add 172.16.0.0/16 to trusted zone
+  ansible.posix.firewalld:
+    zone: trusted
+    source: 172.16.0.0/16
+    source: 192.168.0.0/23
+    state: enabled
+    permanent: yes
+
+- name: Add forward to public zone
+  ansible.builtin.command:
+    cmd: firewall-cmd --permanent --zone=trusted --add-forward
