@@ -1,0 +1,6 @@
+{{ ansible_managed | comment }}
+{% if dns.hosts is defined %}
+{% for host in dns.hosts %}
+{{ host }}
+{% endfor %}
+{% endif %}
