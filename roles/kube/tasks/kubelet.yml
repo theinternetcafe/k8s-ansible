@@ -1,9 +1,11 @@
 ---
-- name: Disable SELinux
-  ansible.posix.selinux:
-    state: permissive
-    policy: targeted
+- name: Disable swap
+  ansible.builtin.shell: |
+    swapoff -a
 
+- name: Remove swapfile from /etc/fstab
+  ansible.builtin.command: sed -i /swap/d /etc/fstab
+  
 - name: Custom Firewall Ports Enabled
   ansible.posix.firewalld:
     port: "{{ item }}"

@@ -20,6 +20,21 @@
     - net.bridge.bridge-nf-call-ip6tables
     - net.bridge.bridge-nf-call-iptables
 
+- name: Disable Return Path Filtering
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '0'
+  with_items: 
+    - net.ipv4.conf.default.rp_filter
+    - net.ipv4.conf.all.rp_filter
+    - net.ipv4.conf.lo.rp_filter
+    - net.ipv4.conf.bond0.rp_filter
+    - net.ipv4.conf.eno1.rp_filter
+    - net.ipv4.conf.enp2s0f0.rp_filter
+    - net.ipv4.conf.enp67s0f0.rp_filter
+    - net.ipv4.conf.enp67s0f1.rp_filter
+  failed_when: false
+
 - name: Enable Firewalld
   ansible.builtin.service:
     name: firewalld

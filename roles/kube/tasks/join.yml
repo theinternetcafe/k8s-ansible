@@ -3,5 +3,5 @@
   when: inventory_hostname not in groups['control_plane']
 
 - name: Run kubeadm_join_command_control_plane on control plane nodes
-  ansible.builtin.shell: "{{ kubeadm_join_command_control_plane }}"
+  ansible.builtin.shell: "{{ kubeadm_join_command_control_plane }}" 
   when: inventory_hostname in groups['control_plane'] and inventory_hostname != groups['control_plane'][0]

@@ -1,5 +1,4 @@
 ---
-- name: Set SELinux to permissive
+- name: Set SELinux to disabled
   ansible.builtin.selinux:
-    policy: targeted
-    state: permissive
+    state: disabled

@@ -3,12 +3,25 @@
   become: true
   become_method: sudo
   become_user: root
+  run_once: true
   roles:
     - kube
   vars:
     action: create_join_command
 
-- hosts: all
+# run join on all control_planes
+- hosts: control_plane
+  become: true
+  become_method: sudo
+  become_user: root
+  gather_facts: no
+  roles:
+    - kube
+  vars:
+    action: join
+
+# run join on all hosts except control_plane
+- hosts: all:!control_plane
   become: true
   become_method: sudo
   become_user: root

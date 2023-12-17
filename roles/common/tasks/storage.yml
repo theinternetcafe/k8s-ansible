@@ -14,11 +14,8 @@
     state: "{{ item.state }}"
   loop: "{{ mounts + shared_mounts }}"
 
-- name: Remove swap
-  ansible.posix.mount:
-    name: swap
-    fstype: swap
-    state: unmounted
+- name: Remove swapfile from /etc/fstab
+  ansible.builtin.command: sed -i /swap/d /etc/fstab
 
 - name: Run swapoff
   ansible.builtin.shell: swapoff -a

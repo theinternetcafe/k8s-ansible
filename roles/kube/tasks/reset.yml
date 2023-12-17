@@ -1,2 +1,25 @@
 - name: Reset the kubelet
   ansible.builtin.command: kubeadm reset -f
+
+- name: Remove /etc/kubernetes directory
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: absent
+
+- name: Remove /var/lib/kubelet directory
+  ansible.builtin.file:
+    path: /var/lib/kubelet
+    state: absent
+
+- name: Remove /etc/cni directory
+  ansible.builtin.file:
+    path: /etc/cni
+    state: absent
+
+- name: Remove /opt/cni directory
+  ansible.builtin.file:
+    path: /opt/cni
+    state: absent
+
+- name: Flush firewall rules
+  ansible.builtin.command: firewall-cmd --complete-reload

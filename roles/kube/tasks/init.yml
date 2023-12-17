@@ -8,10 +8,18 @@
     mode: '0600'
 
 - name: Initialize Kubernetes Cluster
-  ansible.builtin.shell: kubeadm init --config /root/kubeadm.yaml --skip-phases=addon/kube-proxy
+  ansible.builtin.shell: kubeadm init --upload-certs --config /root/kubeadm.yaml
   args:
     creates: /etc/kubernetes/admin.conf
   register: kubeadm_init
   changed_when: kubeadm_init.rc == 0
   failed_when: kubeadm_init.rc != 0
   notify: restart kubelet
+
+- name: Make /etc/kubernetes/admin.conf readable by wheel group
+  ansible.builtin.file:
+    path: /etc/kubernetes/admin.conf
+    owner: root
+    group: wheel
+    mode: '0640'
+  when: kubeadm_init.rc == 0

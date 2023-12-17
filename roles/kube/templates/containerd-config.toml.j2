@@ -76,7 +76,7 @@ version = 2
       max_conf_num = 1
 
     [plugins."io.containerd.grpc.v1.cri".containerd]
-    {%- if gpu_manufacturer == "nvidia" %}
+    {% if gpu_manufacturer == "nvidia" %}
       default_runtime_name = "nvidia"
     {% else %}
       default_runtime_name = "runc"

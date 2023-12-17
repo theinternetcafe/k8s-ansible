@@ -3,12 +3,11 @@
   ansible.builtin.yum_repository:
     name: kubernetes
     description: Kubernetes
-    baseurl: "https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch"
-    gpgkey: "https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg"
+    baseurl: "https://pkgs.k8s.io/core:/stable:/v{{ kube.version.split('.')[0] }}.{{ kube.version.split('.')[1] }}/rpm/"
+    gpgkey: "https://pkgs.k8s.io/core:/stable:/v{{ kube.version.split('.')[0] }}.{{ kube.version.split('.')[1] }}/rpm/repodata/repomd.xml.key"    
     gpgcheck: yes
     enabled: yes
     exclude: "kubelet kubeadm kubectl"
-
 - name: Install kube packages
   ansible.builtin.package:
     name: "{{ item }}"
