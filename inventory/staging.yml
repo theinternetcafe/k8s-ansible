@@ -2,9 +2,11 @@
 all:
   children:
     control_plane:
-      control-plane.local:
+      hosts:
+        control-plane.local:
     downloader:
-      worker.local:
+      hosts:
+        worker.local:
   hosts:
     control-plane.local:
     worker.local:

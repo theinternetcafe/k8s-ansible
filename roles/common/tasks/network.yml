@@ -24,7 +24,7 @@
   ansible.posix.sysctl:
     name: "{{ item }}"
     value: '0'
-  with_items: 
+  with_items:
     - net.ipv4.conf.default.rp_filter
     - net.ipv4.conf.all.rp_filter
     - net.ipv4.conf.lo.rp_filter
@@ -57,7 +57,7 @@
     group: root
     mode: '0644'
   notify: restart NetworkManager
-  
+
 - name: Enable nameservers
   ansible.builtin.template:
     src: resolv.conf.j2
@@ -65,6 +65,7 @@
     owner: root
     group: root
     mode: '0644'
+  when: dns is defined and dns.nameservers is defined
 
 - name: Enable hosts file
   ansible.builtin.template:
@@ -73,3 +74,4 @@
     owner: root
     group: root
     mode: '0644'
+  when: dns is defined and dns.hosts is defined

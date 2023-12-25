@@ -6,6 +6,7 @@ common_packages:
   - git
   - nfs-utils
   - tar
+  - python3-pip
 common_ports:
   - 22/tcp
   - 111/tcp  # nfs-server

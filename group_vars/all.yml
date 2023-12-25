@@ -1,11 +1,7 @@
 ---
 kube:
-  version: 1.26.1
+  version: 1.28.4
 gpu_manufacturer: null
 ansible_ssh_user: root
-base_packages:
-  - tar
-  - python3-pip
-  - nfs-utils
 jumpcloud_install_key: null
 shared_mounts: []
