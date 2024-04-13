@@ -11,8 +11,9 @@ apiServer:
     - "127.0.0.1"
     - "10.96.0.1"
     - "10.96.0.2"
-    - "k8s-api.cloud-fortress.net"
+    - "k8s-api.{{ domain_name }}"
+    - "k8s-api.{{ cluster_name }}.{{ domain_name }}"
 networking:
-  dnsDomain: cluster.local
-  podSubnet: 172.16.0.0/16
-  serviceSubnet: 10.96.0.0/12
+  dnsDomain: {{ kube_dns_domain }}
+  podSubnet: {{ kube_pod_subnet }}
+  serviceSubnet: {{ kube_service_subnet }}
