@@ -1,0 +1,40 @@
+---
+
+- name: Install golang
+  ansible.builtin.package:
+    name: golang
+    state: present
+
+- name: Install timoni
+  ansible.builtin.shell: "go install github.com/stefanprodan/timoni/cmd/timoni@latest"
+
+- name: Deploy Flux AIO
+  register: flux_aio_manifests
+  ansible.builtin.shell: "timoni bundle build -f -"
+  args:
+    stdin: |
+      bundle: {
+          apiVersion: "v1alpha1"
+          name:       "flux-aio"
+          instances: {
+              "flux": {
+                  module: url: "oci://ghcr.io/stefanprodan/modules/flux-aio"
+                  namespace: "flux-system"
+                  values: {
+                      controllers: {
+                          helm: enabled:         true
+                          kustomize: enabled:    true
+                          notification: enabled: true
+                      }
+                      hostNetwork:     false
+                      securityProfile: "privileged"
+                  }
+              }
+          }
+      }
+
+- name: Apply Flux AIO manifests
+  ansible.builtin.shell: "kubectl apply -f -"
+  args:
+    stdin: "{{ flux_aio_manifests.stdout }}"
+  when: flux_aio_manifests.rc == 0
