@@ -15,6 +15,17 @@
         enabled: yes
   notify: dnf makecache
 
+# Install elrepo repo if btrfs support is enabled
+- name: Install elrepo repo
+  ansible.builtin.yum_repository:
+    name: elrepo-kernel
+    description: ELRepo.org Community Enterprise Linux Repository
+    baseurl: "http://elrepo.org/linux/kernel/el9/$basearch/"
+    gpgkey: "https://elrepo.org/RPM-GPG-KEY-elrepo.org"
+    gpgcheck: yes
+    enabled: yes
+  when: btrfs.enabled is defined and btrfs.enabled
+
 - name: Update system
   ansible.builtin.command: dnf update -y
 

@@ -1,4 +1,12 @@
 ---
+# install elrepo kernel for btrfs support if enabled
+- name: Install elrepo kernel
+  ansible.builtin.package:
+    name: kernel-ml
+    state: latest
+  when: btrfs.enabled is defined and btrfs.enabled
+  notify: reboot
+
 - name: Create shared mount directory
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -12,6 +20,7 @@
     path: "{{ item.path }}"
     src: "{{ item.src }}"
     state: "{{ item.state }}"
+  failed_when: false # allow failures because btfs is not supported by default
   loop: "{{ mounts + shared_mounts }}"
 
 - name: Remove swapfile from /etc/fstab

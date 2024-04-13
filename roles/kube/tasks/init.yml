@@ -23,3 +23,7 @@
     group: wheel
     mode: '0640'
   when: kubeadm_init.rc == 0
+
+- name: Include flux.yml task
+  include_tasks: flux.yml
+  when: kubeadm_init.rc == 0

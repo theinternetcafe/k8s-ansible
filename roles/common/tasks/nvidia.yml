@@ -7,49 +7,10 @@
     gpgcheck: true
     gpgkey: https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/D42D0685.pub
 
-- name: Install the 'Development tools' package group needed to build drivers
+- name: Install the nvidia-driver-cuda package
   ansible.builtin.dnf:
     name: '@Development tools'
     state: present
-
-- name: Clean DNF Caches
-  ansible.builtin.command: dnf clean all
-
-- name: Install CUDA
-  ansible.builtin.dnf:
-    enablerepo: epel
-    name: cuda
-    state: present
-
-- name: Copy libcuda.so.1 into /usr/local/cuda/lib64 directory for Plex container mount
-  ansible.builtin.copy:
-    remote_src: true
-    src: "/usr/lib64/libcuda.so.{{ nvidia_cuda_version }}"
-    dest: /usr/local/cuda/lib64/libcuda.so.1
-    owner: root
-    group: downloads
-    mode: '0644'
-
-- name: Download drivers for the card itself
-  ansible.builtin.get_url:
-    url: "https://us.download.nvidia.com/XFree86/Linux-x86_64/{{ nvidia_cuda_version }}/NVIDIA-Linux-x86_64-{{ nvidia_cuda_version }}.run"
-    dest: "/root/NVIDIA-Linux-x86_64-{{ nvidia_cuda_version }}.run"
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Check to see if nvidia is loaded
-  ansible.builtin.shell: "lsmod | grep nvidia"
-  changed_when: false
-  register: nvidia_loaded
-
-- name: Install the drivers
-  when: nvidia_loaded.rc == '1'
-  block:
-  - name: Install the drivers
-    ansible.builtin.command: "./NVIDIA-Linux-x86_64-{{ nvidia_cuda_version }}.run --disable-nouveau --dkms --accept-license --no-questions"
-  - name: Update initramfs with nouveau blacklist
-    ansible.builtin.command: "dracut --force"
 
 - name: libnvidia-container Repo setup
   ansible.builtin.yum_repository:

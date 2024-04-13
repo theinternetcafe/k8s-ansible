@@ -1,3 +1,16 @@
+- name: Create networkmanager interface
+  community.general.nmcli:
+    conn_name: "{{ item.conn_name }}"
+    ifname: "{{ item.ifname }}"
+    ip4: "{{ item.ip4 }}"
+    gw4: "{{ item.gw4 }}"
+    dns4: "{{ item.dns4 }}"
+    master: "{{ item.master }}"
+    state: "present"
+    type: "{{ item.type }}"
+  with_items: "{{ ethernet }}"
+  when: ethernet is defined
+
 - name: Overlay Module
   community.general.modprobe:
     name: "{{ item }}"

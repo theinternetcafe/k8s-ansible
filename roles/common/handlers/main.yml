@@ -10,3 +10,6 @@
   ansible.builtin.service:
     name: NetworkManager
     state: restarted
+- name: reboot
+  ansible.builtin.reboot:
+    msg: "Reboot initiated by Ansible"

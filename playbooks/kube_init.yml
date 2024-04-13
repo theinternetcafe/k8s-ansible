@@ -1,5 +1,5 @@
 ---
-- hosts: "{{ groups['control_plane'][0] }}"
+- hosts: "{{ groups['control_plane'] | first }}"
   become: true
   become_method: sudo
   become_user: root

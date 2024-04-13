@@ -7,11 +7,11 @@
     state: enabled
   with_items: "{{ kube_ports }}"
 
-- name: Add 172.16.0.0/16 to trusted zone
+- name: Add pod cidr to trusted zone
   ansible.posix.firewalld:
     zone: trusted
-    source: 172.16.0.0/16
-    source: 192.168.0.0/16
+    source: "{{ kube_pod_cidr }}"
+    source: "{{ kube_service_cidr }}"
     state: enabled
     permanent: yes
 
