@@ -7,14 +7,23 @@
   when: btrfs.enabled is defined and btrfs.enabled
   notify: reboot
 
-- name: Create shared mount directory
+- name: Create unique mount directories
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
     mode: 0755
-  loop: "{{ mounts + shared_mounts }}"
-  when: mounts is defined or shared_mounts is defined
-- name: Create shared mount
+  loop: "{{ mounts }}"
+  when: (mounts is defined) and (mounts | type_debug == "list")
+
+- name: Create shared mount directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: 0755
+  loop: "{{ shared_mounts }}"
+  when: (shared_mounts is defined) and (shared_mounts | type_debug == "list")
+
+- name: Create unique mounts
   ansible.posix.mount:
     fstype: "{{ item.fstype }}"
     opts: "{{ item.opts }}"
@@ -22,8 +31,19 @@
     src: "{{ item.src }}"
     state: "{{ item.state }}"
   failed_when: false # allow failures because btfs is not supported by default
-  loop: "{{ mounts + shared_mounts }}"
-  when: mounts is defined or shared_mounts is defined
+  loop: "{{ mounts }}"
+  when: (mounts is defined) and (mounts | type_debug == "list")
+
+- name: Create shared mounts
+  ansible.posix.mount:
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.opts }}"
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    state: "{{ item.state }}"
+  failed_when: false # allow failures because btfs is not supported by default
+  loop: "{{ shared_mounts }}"
+  when: (shared_mounts is defined) and (shared_mounts | type_debug == "list")
 
 - name: Remove swapfile from /etc/fstab
   ansible.builtin.command: sed -i /swap/d /etc/fstab
