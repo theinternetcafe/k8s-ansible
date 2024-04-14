@@ -13,6 +13,7 @@
     state: directory
     mode: 0755
   loop: "{{ mounts + shared_mounts }}"
+  when: mounts is defined or shared_mounts is defined
 - name: Create shared mount
   ansible.posix.mount:
     fstype: "{{ item.fstype }}"
@@ -22,6 +23,7 @@
     state: "{{ item.state }}"
   failed_when: false # allow failures because btfs is not supported by default
   loop: "{{ mounts + shared_mounts }}"
+  when: mounts is defined or shared_mounts is defined
 
 - name: Remove swapfile from /etc/fstab
   ansible.builtin.command: sed -i /swap/d /etc/fstab
