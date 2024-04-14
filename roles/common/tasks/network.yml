@@ -2,21 +2,21 @@
   community.general.nmcli:
     conn_name: "{{ item.conn_name }}"
     ifname: "{{ item.ifname }}"
-    ip4: "{{ item.ip4 }}" if item.ip4 is defined else null
-    gw4: "{{ item.gw4 }}" if item.gw4 is defined else null
-    dns4: "{{ item.dns4 }}" if item.dns4 is defined else null
-    dns4_search: "{{ item.dns4_search }}" if item.dns4_search is defined else null
-    method6: "{{ item.method4 }}" if item.method4 is defined else null
-    master: "{{ item.master }}" if item.master is defined else null
-    state: "{{ item.state }}" if item.state is defined else "present"
-    type: "{{ item.type }}" if item.type is defined else "ethernet"
-    ip6: "{{ item.ip6 }}" if item.ip6 is defined else null
-    gw6: "{{ item.gw6 }}" if item.gw6 is defined else null
-    dns6: "{{ item.dns6 }}" if item.dns6 is defined else null
-    dns6_search: "{{ item.dns6_search }}" if item.dns6_search is defined else null
-    method6: "{{ item.method6 }}" if item.method6 is defined else null
-    hairpin: "{{ item.hairpin }}" if item.hairpin is defined else null
-    mtu: "{{ item.mtu }}" if item.mtu is defined else null
+    ip4: "{{ item.ip4 | default(omit) }}"
+    gw4: "{{ item.gw4 | default(omit) }}"
+    dns4: "{{ item.dns4 | default(omit) }}"
+    dns4_search: "{{ item.dns4_search | default(omit) }}"
+    method6: "{{ item.method4 | default(omit) }}"
+    master: "{{ item.master  | default(omit) }}"
+    state: "{{ item.state if item.state is defined else 'present' }}"
+    type: "{{ item.type if item.type is defined else 'ethernet' }}"
+    ip6: "{{ item.ip6 | default(omit) }}"
+    gw6: "{{ item.gw6 | default(omit) }}"
+    dns6: "{{ item.dns6 | default(omit) }}"
+    dns6_search: "{{ item.dns6_search | default(omit) }}"
+    method6: "{{ item.method6 | default(omit) }}"
+    hairpin: "{{ item.hairpin | default(omit) }}"
+    mtu: "{{ item.mtu | default(omit) }}"
   with_items: "{{ ethernet }}"
   when: ethernet is defined
 

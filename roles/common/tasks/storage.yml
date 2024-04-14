@@ -13,7 +13,7 @@
     state: directory
     mode: 0755
   loop: "{{ mounts }}"
-  when: (mounts is defined) and (mounts | type_debug == "list")
+  when: mounts | default([]) != []
 
 - name: Create shared mount directories
   ansible.builtin.file:
@@ -21,7 +21,7 @@
     state: directory
     mode: 0755
   loop: "{{ shared_mounts }}"
-  when: (shared_mounts is defined) and (shared_mounts | type_debug == "list")
+  when: shared_mounts | default([]) != []
 
 - name: Create unique mounts
   ansible.posix.mount:
@@ -32,7 +32,7 @@
     state: "{{ item.state }}"
   failed_when: false # allow failures because btfs is not supported by default
   loop: "{{ mounts }}"
-  when: (mounts is defined) and (mounts | type_debug == "list")
+  when: mounts | default([]) != []
 
 - name: Create shared mounts
   ansible.posix.mount:
@@ -43,7 +43,7 @@
     state: "{{ item.state }}"
   failed_when: false # allow failures because btfs is not supported by default
   loop: "{{ shared_mounts }}"
-  when: (shared_mounts is defined) and (shared_mounts | type_debug == "list")
+  when: shared_mounts | default([]) != []
 
 - name: Remove swapfile from /etc/fstab
   ansible.builtin.command: sed -i /swap/d /etc/fstab
