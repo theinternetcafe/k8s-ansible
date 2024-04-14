@@ -5,8 +5,11 @@
     name: golang
     state: present
 
-- name: Install timoni
-  ansible.builtin.shell: "go install github.com/stefanprodan/timoni/cmd/timoni@latest"
+- name: Download timoni archive
+  ansible.builtin.command: "curl {{ timoni_bin_url }}"
+
+- name: Extract timoni archive
+  ansible.builtin.command: "tar -xzf {{ timoni_bin_url | basename }}"
 
 - name: Deploy Flux AIO
   register: flux_aio_manifests
