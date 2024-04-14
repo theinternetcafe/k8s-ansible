@@ -15,5 +15,5 @@ apiServer:
     - "k8s-api.{{ cluster_name }}.{{ domain_name }}"
 networking:
   dnsDomain: {{ kube_dns_domain }}
-  podSubnet: {{ kube_pod_subnet }}
-  serviceSubnet: {{ kube_service_subnet }}
+  podSubnet: {{ kube_pod_cidr }}
+  serviceSubnet: {{ kube_service_cidr }}
