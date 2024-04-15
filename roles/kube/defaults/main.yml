@@ -18,3 +18,4 @@ haproxy_frontend_ip: 127.0.0.1
 haproxy_frontend_port: 8443
 control_plane_port: 6443
 timoni_bin_url: https://github.com/stefanprodan/timoni/releases/download/v0.20.0/timoni_0.20.0_linux_amd64.tar.gz
+timoni_filename: "{{ timoni_bin_url | basename }}"

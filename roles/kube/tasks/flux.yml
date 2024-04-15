@@ -1,15 +1,15 @@
 ---
 
-- name: Install golang
-  ansible.builtin.package:
-    name: golang
-    state: present
-
 - name: Download timoni archive
-  ansible.builtin.command: "curl {{ timoni_bin_url }}"
+  ansible.builtin.command: "curl -L {{ timoni_bin_url }} -o /root/{{ timoni_filename }}"
 
 - name: Extract timoni archive
-  ansible.builtin.command: "tar -xzf {{ timoni_bin_url | basename }}"
+  ansible.builtin.command: "tar -xzf /root/{{ timoni_filename }} -C /usr/bin/"
+
+- name: Set timoni permissions
+  ansible.builtin.file:
+    path: /usr/bin/timoni
+    mode: '0755'
 
 - name: Deploy Flux AIO
   register: flux_aio_manifests
@@ -29,15 +29,61 @@
                           kustomize: enabled:    true
                           notification: enabled: true
                       }
-                      hostNetwork:     false
+                      hostNetwork:     true
                       securityProfile: "privileged"
+                      env: {
+                        KUBERNETES_SERVICE_HOST: "127.0.0.1"
+                        KUBERNETES_SERVICE_PORT: "8443"
+                        SOURCE_CONTROLLER_LOCALHOST: "127.0.0.1:9790"
+                      }
                   }
               }
           }
       }
 
 - name: Apply Flux AIO manifests
-  ansible.builtin.shell: "kubectl apply -f -"
+  ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
   args:
     stdin: "{{ flux_aio_manifests.stdout }}"
   when: flux_aio_manifests.rc == 0
+
+- name: Check for Flux secret resource
+  ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system get secret flux-system"
+  register: flux_secret_check
+
+- name: Create Flux secret resource with username and password
+  ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system create secret generic flux-system --from-literal=username={{ github_username }} --from-literal=password={{ github_pat }}"
+  when: flux_secret_check.rc != 0
+
+- name: Apply GitRepository and Kustomization manifests
+  ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
+  args:
+    stdin: |
+      ---
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: GitRepository
+      metadata:
+        name: flux-system
+        namespace: flux-system
+      spec:
+        interval: 1m
+        ref:
+          branch: main
+        secretRef:
+          name: flux-system
+        url: {{ flux_git_repo_url }}
+      ---
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: flux-system
+        namespace: flux-system
+      spec:
+        interval: 1m
+        targetNamespace: flux-system
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: "./flux/us2"
+        prune: true
+        timeout: 1m

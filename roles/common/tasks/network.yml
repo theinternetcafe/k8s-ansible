@@ -65,6 +65,15 @@
     state: enabled
   with_items: "{{ common_ports }}"
 
+- name: NFS Firewall Ports Enabled
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  with_items: "{{ nfs_ports }}"
+  when: exports | default([]) != []
+
 - name: Disable NetworkManager control of DNS
   ansible.builtin.template:
     src: 90-disable-nm-dns.conf.j2

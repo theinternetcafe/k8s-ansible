@@ -9,6 +9,8 @@ common_packages:
   - python3-pip
 common_ports:
   - 22/tcp
+
+nfs_ports:
   - 111/tcp  # nfs-server
   - 111/udp  # nfs-server
   - 2049/tcp # nfs-server
