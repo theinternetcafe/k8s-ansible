@@ -21,5 +21,16 @@
     path: /opt/cni
     state: absent
 
+- name: Remove /var/lib/cni directory
+  ansible.builtin.file:
+    path: /var/lib/cni
+    state: absent
+
+- name: Prune containerd containers
+  ansible.builtin.command: crictl ps -q | xargs crictl rm
+
+- name: Prune containerd images
+  ansible.builtin.command: crictl images -q | xargs crictl rmi
+
 - name: Flush firewall rules
   ansible.builtin.command: firewall-cmd --complete-reload

@@ -50,10 +50,11 @@
 - name: Check for Flux secret resource
   ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system get secret flux-system"
   register: flux_secret_check
+  failed_when: false
 
 - name: Create Flux secret resource with username and password
   ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system create secret generic flux-system --from-literal=username={{ github_username }} --from-literal=password={{ github_pat }}"
-  when: flux_secret_check.rc != 0
+  when: flux_secret_check is defined and flux_secret_check.rc != 0
 
 - name: Apply GitRepository and Kustomization manifests
   ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"

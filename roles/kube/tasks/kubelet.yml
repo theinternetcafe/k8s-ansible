@@ -5,7 +5,7 @@
 
 - name: Remove swapfile from /etc/fstab
   ansible.builtin.command: sed -i /swap/d /etc/fstab
-  
+
 - name: Custom Firewall Ports Enabled
   ansible.posix.firewalld:
     port: "{{ item }}"
@@ -24,11 +24,3 @@
   ansible.builtin.shell:
     cmd: kubectl completion bash > /etc/bash_completion.d/kubectl
     creates: /etc/bash_completion.d/kubectl
-
-- name: Put kubeadm.yaml in /root/ for kubeadm init
-  ansible.builtin.template:
-    src: kubeadm.yaml.j2
-    dest: /root/kubeadm.yaml
-    owner: root
-    group: root
-    mode: '0600'
