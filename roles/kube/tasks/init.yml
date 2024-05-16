@@ -7,6 +7,11 @@
     group: root
     mode: '0600'
 
+- name: Check if kubernetes is already initialized
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubernetes_installed
+
 - name: Initialize Kubernetes Cluster
   ansible.builtin.shell: kubeadm init --upload-certs --config /root/kubeadm.yaml
   args:
@@ -15,6 +20,7 @@
   changed_when: kubeadm_init.rc == 0
   failed_when: kubeadm_init.rc != 0
   notify: restart kubelet
+  when: kubernetes_installed.stat is not defined or kubernetes_installed.stat.exists == false
 
 - name: Make /etc/kubernetes/admin.conf readable by wheel group
   ansible.builtin.file:
@@ -22,8 +28,4 @@
     owner: root
     group: wheel
     mode: '0640'
-  when: kubeadm_init.rc == 0
-
-- name: Include flux.yml task
-  include_tasks: flux.yml
-  when: kubeadm_init.rc == 0
+  when: kubernetes_installed.stat.exists == true or kubeadm_init.rc == 0
