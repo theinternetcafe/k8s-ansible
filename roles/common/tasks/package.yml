@@ -28,7 +28,11 @@
 
 - name: Update system
   ansible.builtin.command: dnf update -y
-  notify: restart NetworkManager
+
+- name: restart NetworkManager # Restart NetworkManager to apply changes
+  ansible.builtin.service:
+    name: NetworkManager
+    state: restarted
 
 - name: Install common packages
   ansible.builtin.package:
