@@ -28,6 +28,7 @@
 
 - name: Update system
   ansible.builtin.command: dnf update -y
+  notify: restart NetworkManager
 
 - name: Install common packages
   ansible.builtin.package:
