@@ -1,8 +1,5 @@
 ---
 - hosts: all
-  become: true
-  become_method: sudo
-  become_user: root
   run_once: true
   roles:
     - kube
@@ -11,9 +8,6 @@
 
 # run join on all control_planes
 - hosts: control_plane
-  become: true
-  become_method: sudo
-  become_user: root
   gather_facts: no
   roles:
     - kube
@@ -22,9 +16,6 @@
 
 # run join on all hosts except control_plane
 - hosts: all:!control_plane
-  become: true
-  become_method: sudo
-  become_user: root
   gather_facts: no
   roles:
     - kube

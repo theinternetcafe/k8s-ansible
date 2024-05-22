@@ -1,4 +1,7 @@
 ---
+become: true
+become_method: sudo
+become_user: root
 kube:
   version: 1.28.4
 gpu_manufacturer: null
