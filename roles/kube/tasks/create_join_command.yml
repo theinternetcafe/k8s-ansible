@@ -10,7 +10,7 @@
     kubeadm_join_command: "{{ kubeadm_join_command.stdout }}"
   when: kubeadm_join_command is defined
 - name: Create kubeadm join command for control plane
-  ansible.builtin.shell: echo $(kubeadm token create --print-join-command) --control-plane --certificate-key $(kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace)
+  ansible.builtin.shell: echo $(kubeadm --kubeconfig /etc/kubernetes/admin.conf token create --print-join-command) --control-plane --certificate-key $(kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace)
   register: kubeadm_join_command_control_plane
   changed_when: kubeadm_join_command_control_plane.rc == 0
   failed_when: kubeadm_join_command_control_plane.rc != 0
