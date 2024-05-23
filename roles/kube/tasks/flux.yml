@@ -85,6 +85,6 @@
         sourceRef:
           kind: GitRepository
           name: flux-system
-        path: "./flux/us2"
+        path: "./flux/{{ cluster_name }}"
         prune: true
         timeout: 1m
