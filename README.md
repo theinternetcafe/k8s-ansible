@@ -33,5 +33,5 @@ kubectl create secret generic sealed-secrets-key \
 ```
 
 ### Create a new sealed secret
-kubeseal --format=yaml < secret.yaml > sealed-secret.yaml
+kubeseal --controller-namespace sealed-secrets --controller-name sealed-secrets --format=yaml < secret.yaml > sealed-secret.yaml
 ```
