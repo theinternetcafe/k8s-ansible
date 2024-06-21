@@ -1,6 +1,18 @@
 # Check if node is already joined to the cluster
+- name: Check if node is already joined to the cluster
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubernetes_joined
 
-- name: Label nodes as downloader if they are in the downloader group
+- name: Run kubeadm_join_command on all nodes
+  ansible.builtin.shell: "{{ kubeadm_join_command }}"
+  when: inventory_hostname not in groups['control_plane'] and kubernetes_joined.stat.exists == false
+
+- name: Run kubeadm_join_command_control_plane on control plane nodes
+  ansible.builtin.shell: "{{ kubeadm_join_command_control_plane }}"
+  when: inventory_hostname in groups['control_plane'] and inventory_hostname != groups['control_plane'][0] and kubernetes_joined.stat.exists == false
+
+- name: Label nodes with each of their groups
   ansible.builtin.shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ inventory_hostname }} {{ item }}=yes"
   when: inventory_hostname in groups[item]
   with_items: "{{ groups.keys() }}"
