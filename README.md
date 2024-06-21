@@ -10,7 +10,6 @@
 ## Sealed secrets
 
 ### Install Kubeseal
-```
 Install kubeseal (macOS)
 ```
 brew install kubeseal
