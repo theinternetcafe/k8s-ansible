@@ -1,6 +1,6 @@
 ---
 - name: If Firewall Is Enabled
-  when: kube_firewall_enabled
+  when: firewall_enabled
   block:
   - name: Kubernetes Firewall Ports Enabled
     ansible.posix.firewalld:
@@ -19,10 +19,3 @@
   - name: Add forward to public zone
     ansible.builtin.command:
       cmd: firewall-cmd --permanent --zone=trusted --add-forward
-
-- name: If Firewall Is Disabled
-  when: not kube_firewall_enabled
-  ansible.builtin.service:
-    name: firewalld
-    state: stopped
-    enabled: no

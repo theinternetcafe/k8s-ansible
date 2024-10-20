@@ -14,7 +14,6 @@ kube_ports:
   - 10250-10252/tcp # kubelet
 kube_pod_cidr: 172.16.0.0/12
 kube_service_cidr: 10.0.0.0/16
-kube_firewall_enabled: true
 haproxy_frontend_ip: 127.0.0.1
 haproxy_frontend_port: 8443
 control_plane_port: 6443
