@@ -56,6 +56,7 @@
     name: firewalld
     state: started
     enabled: yes
+  when: kube_firewall_enabled
 
 - name: Common Firewall Ports Enabled
   ansible.posix.firewalld:
