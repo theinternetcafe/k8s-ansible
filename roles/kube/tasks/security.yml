@@ -2,3 +2,4 @@
 - name: Set SELinux to disabled
   ansible.builtin.selinux:
     state: disabled
+  notify: reboot server

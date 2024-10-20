@@ -1,20 +1,28 @@
 ---
-- name: Kubernetes Firewall Ports Enabled
-  ansible.posix.firewalld:
-    port: "{{ item }}"
-    permanent: yes
-    immediate: yes
-    state: enabled
-  with_items: "{{ kube_ports }}"
+- name: If Firewall Is Enabled
+  when: kube_firewall_enabled
+  block:
+  - name: Kubernetes Firewall Ports Enabled
+    ansible.posix.firewalld:
+      port: "{{ item }}"
+      permanent: yes
+      immediate: yes
+      state: enabled
+    with_items: "{{ kube_ports }}"
+  - name: Add pod cidr to trusted zone
+    ansible.posix.firewalld:
+      zone: trusted
+      source: "{{ kube_pod_cidr }}"
+      source: "{{ kube_service_cidr }}"
+      state: enabled
+      permanent: yes
+  - name: Add forward to public zone
+    ansible.builtin.command:
+      cmd: firewall-cmd --permanent --zone=trusted --add-forward
 
-- name: Add pod cidr to trusted zone
-  ansible.posix.firewalld:
-    zone: trusted
-    source: "{{ kube_pod_cidr }}"
-    source: "{{ kube_service_cidr }}"
-    state: enabled
-    permanent: yes
-
-- name: Add forward to public zone
-  ansible.builtin.command:
-    cmd: firewall-cmd --permanent --zone=trusted --add-forward
+- name: If Firewall Is Disabled
+  when: not kube_firewall_enabled
+  ansible.builtin.service:
+    name: firewalld
+    state: stopped
+    enabled: no

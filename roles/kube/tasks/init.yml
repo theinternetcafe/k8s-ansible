@@ -13,7 +13,7 @@
   register: kubernetes_installed
 
 - name: Initialize Kubernetes Cluster
-  ansible.builtin.shell: kubeadm init --upload-certs --config /root/kubeadm.yaml
+  ansible.builtin.shell: kubeadm init --upload-certs --skip-phases=addon/kube-proxy --config /root/kubeadm.yaml
   args:
     creates: /etc/kubernetes/admin.conf
   register: kubeadm_init
