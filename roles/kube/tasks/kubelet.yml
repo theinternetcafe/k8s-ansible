@@ -13,6 +13,7 @@
     immediate: yes
     state: enabled
   with_items: "{{ kube_ports }}"
+  when: kube_firewall_enabled
 
 - name: Start kubelet
   ansible.builtin.systemd:
