@@ -34,4 +34,4 @@
 
 - name: Flush firewall rules
   ansible.builtin.command: firewall-cmd --complete-reload
-
+  when: firewall_enabled
