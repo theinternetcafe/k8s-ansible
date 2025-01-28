@@ -6,6 +6,13 @@
 - name: Remove swapfile from /etc/fstab
   ansible.builtin.command: sed -i /swap/d /etc/fstab
 
+- name: Disable swap.target
+  ansible.builtin.systemd:
+    name: swap.target
+    enabled: false
+    state: stopped
+    masked: true
+
 - name: Custom Firewall Ports Enabled
   ansible.posix.firewalld:
     port: "{{ item }}"
