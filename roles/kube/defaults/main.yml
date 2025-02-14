@@ -1,4 +1,5 @@
 ---
+firewall_enabled: true
 # defaults file for kube
 kube_dns_domain: cluster.local
 kube_packages:
