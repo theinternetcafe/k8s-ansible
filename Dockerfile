@@ -28,14 +28,18 @@ RUN pip3 install --upgrade pip && \
     PyYAML==6.0.2 \
     resolvelib==1.0.1
 
-# Install Ansible collections
+# Create runner user
+RUN adduser -D -u 1000 runner
+
+# Install Ansible collections as runner user
+USER runner
 RUN ansible-galaxy collection install \
     ansible.posix \
     community.general \
     kubernetes.core
 
-# Create runner user
-RUN adduser -D -u 1000 runner
+# Switch back to root for file operations
+USER root
 
 # Copy project files
 WORKDIR /runner

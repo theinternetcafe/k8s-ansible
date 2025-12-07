@@ -50,10 +50,10 @@
 
 - name: Run swapoff
   ansible.builtin.shell: swapoff -a
-  when: ansible_swaptotal_mb > 0
+  when: ansible_facts["swaptotal_mb"] > 0
 
 - name: NFS
-  when: exports is defined and exports
+  when: exports | default([]) != []
   block:
   - name: Create exports
     ansible.builtin.lineinfile:
@@ -61,7 +61,7 @@
       state: present
       line: "{{ item }}"
     with_items: "{{ exports }}"
-    when: exports is defined and exports
+    when: exports | default([]) != []
     notify: restart nfs
   - name: Install nfs-server
     ansible.builtin.package:

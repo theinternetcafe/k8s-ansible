@@ -12,7 +12,9 @@ build-arm64:
 build-all: build-amd64 build-arm64
 
 push-amd64:
+	docker tag $(IMAGE_NAME)-amd64:$(VERSION) $(IMAGE_NAME):$(VERSION)
 	docker push $(IMAGE_NAME)-amd64:$(VERSION)
+	docker push $(IMAGE_NAME):$(VERSION)
 
 push-arm64:
 	docker push $(IMAGE_NAME)-arm64:$(VERSION)

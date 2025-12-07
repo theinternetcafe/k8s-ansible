@@ -6,7 +6,7 @@
     gw4: "{{ item.gw4 | default(omit) }}"
     dns4: "{{ item.dns4 | default(omit) }}"
     dns4_search: "{{ item.dns4_search | default(omit) }}"
-    method6: "{{ item.method4 | default(omit) }}"
+    method4: "{{ item.method4 | default(omit) }}"
     master: "{{ item.master  | default(omit) }}"
     state: "{{ item.state if item.state is defined else 'present' }}"
     type: "{{ item.type if item.type is defined else 'ethernet' }}"
