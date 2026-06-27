@@ -1,0 +1,129 @@
+/// Typed schema for the Ansible runner (roles, playbooks, templates).
+///
+/// Hybrid typing: the composing skeleton (Play/Role/file-layout) and task
+/// control keys are typed; module arguments stay an open Mapping/String;
+/// Jinja templates are verbatim strings rendered byte-for-byte.
+module Ansible
+
+/// A single Ansible task. Either module form (`module` + `params`) OR block
+/// form (`block`/`rescue`/`always`) — never both.
+open class Task {
+  name: String?
+  // control keys (only emitted when set)
+  `when`: (String | Listing<String>)?
+  notify: (String | Listing<String>)?
+  register: String?
+  become: Boolean?
+  loop: (Listing | String)?
+  with_items: (Listing | String)?
+  delegate_to: String?
+  run_once: Boolean?
+  tags: Listing<String>?
+  changed_when: (String | Boolean)?
+  failed_when: (String | Boolean)?
+  args: Mapping?
+  // block form
+  block: Listing<Task>?
+  rescue: Listing<Task>?
+  always: Listing<Task>?
+  // module form (`module` is a Pkl keyword; backtick-escape required)
+  `module`: String?
+  params: (Mapping | String)?
+}
+
+class Handler extends Task {
+  listen: String?
+}
+
+class Role {
+  name: String
+  defaults: Mapping?
+  taskFiles: Mapping<String, Listing<Task>>
+  handlers: Listing<Handler>?
+  templates: Mapping<String, JinjaTemplate>?
+}
+
+class Play {
+  hosts: String = "all"
+  become: Boolean?
+  gather_facts: Boolean?
+  run_once: Boolean?
+  roles: Listing<String>?
+  vars: Mapping?
+  tasks: Listing<Task>?
+}
+
+class JinjaTemplate {
+  content: String
+}
+
+/// Flatten a Task to its Ansible YAML mapping. Pkl Mappings preserve insertion
+/// order, so we add keys in: name, module-or-block, then control keys.
+/// Note: Listing has no .map(); use `new Listing { for (...) { ... } }`.
+function taskToYaml(t: Task): Mapping = new Mapping {
+  when (t.name != null) { ["name"] = t.name }
+  // module form
+  when (t.`module` != null) { [t.`module`] = t.params }
+  // block form
+  when (t.block != null) { ["block"] = new Listing { for (x in t.block) { taskToYaml(x) } } }
+  when (t.rescue != null) { ["rescue"] = new Listing { for (x in t.rescue) { taskToYaml(x) } } }
+  when (t.always != null) { ["always"] = new Listing { for (x in t.always) { taskToYaml(x) } } }
+  // control keys
+  when (t.`when` != null) { ["when"] = t.`when` }
+  when (t.notify != null) { ["notify"] = t.notify }
+  when (t.register != null) { ["register"] = t.register }
+  when (t.become != null) { ["become"] = t.become }
+  when (t.loop != null) { ["loop"] = t.loop }
+  when (t.with_items != null) { ["with_items"] = t.with_items }
+  when (t.delegate_to != null) { ["delegate_to"] = t.delegate_to }
+  when (t.run_once != null) { ["run_once"] = t.run_once }
+  when (t.tags != null) { ["tags"] = t.tags }
+  when (t.changed_when != null) { ["changed_when"] = t.changed_when }
+  when (t.failed_when != null) { ["failed_when"] = t.failed_when }
+  when (t.args != null) { ["args"] = t.args }
+  when (t is Handler && (t as Handler).listen != null) { ["listen"] = (t as Handler).listen }
+}
+
+function handlerToYaml(h: Handler): Mapping = taskToYaml(h)
+
+function playToYaml(p: Play): Mapping = new Mapping {
+  ["hosts"] = p.hosts
+  when (p.become != null) { ["become"] = p.become }
+  when (p.gather_facts != null) { ["gather_facts"] = p.gather_facts }
+  when (p.run_once != null) { ["run_once"] = p.run_once }
+  when (p.roles != null) { ["roles"] = p.roles }
+  when (p.vars != null) { ["vars"] = p.vars }
+  when (p.tasks != null) { ["tasks"] = new Listing { for (x in p.tasks) { taskToYaml(x) } } }
+}
+
+// roles/<name>/... file set for one Role.
+function renderRole(r: Role): Mapping<String, FileOutput> = new Mapping {
+  when (r.defaults != null) {
+    ["roles/\(r.name)/defaults/main.yml"] = new FileOutput {
+      value = r.defaults
+      renderer = new YamlRenderer {}
+    }
+  }
+  for (fileName, tasks in r.taskFiles) {
+    ["roles/\(r.name)/tasks/\(fileName).yml"] = new FileOutput {
+      value = new Listing { for (t in tasks) { taskToYaml(t) } }
+      renderer = new YamlRenderer {}
+    }
+  }
+  when (r.handlers != null) {
+    ["roles/\(r.name)/handlers/main.yml"] = new FileOutput {
+      value = new Listing { for (h in r.handlers) { handlerToYaml(h) } }
+      renderer = new YamlRenderer {}
+    }
+  }
+  when (r.templates != null) {
+    for (tplName, tpl in r.templates) {
+      ["roles/\(r.name)/templates/\(tplName)"] = new FileOutput { text = tpl.content }
+    }
+  }
+}
+
+function renderPlaybook(name: String, plays: Listing<Play>): FileOutput = new FileOutput {
+  value = new Listing { for (p in plays) { playToYaml(p) } }
+  renderer = new YamlRenderer {}
+}
