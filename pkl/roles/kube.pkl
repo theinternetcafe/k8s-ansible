@@ -1,0 +1,617 @@
+/// The `kube` role modeled as typed Pkl data.
+module roles.kube
+
+import "../Ansible.pkl"
+import "../templates/kube/containerd.pkl" as containerd
+import "../templates/kube/haproxy.pkl" as haproxy
+import "../templates/kube/kubeadm.pkl" as kubeadm
+
+role: Ansible.Role = new {
+  name = "kube"
+
+  defaults = new Mapping {
+    ["firewall_enabled"] = true
+    ["kube_dns_domain"] = "cluster.local"
+    ["kube_packages"] = new Listing {
+      "containerd.io"
+      "kubeadm-{{ kube.version }}"
+      "kubectl-{{ kube.version }}"
+      "kubelet-{{ kube.version }}"
+    }
+    ["kube_ports"] = new Listing {
+      "6443/tcp"
+      "4240/tcp"
+      "8472/udp"
+      "2379-2380/tcp"
+      "10250-10252/tcp"
+    }
+    ["kube_pod_cidr"] = "172.16.0.0/12"
+    ["kube_service_cidr"] = "10.96.0.0/16"
+    ["haproxy_frontend_ip"] = "127.0.0.1"
+    ["haproxy_frontend_port"] = 8443
+    ["control_plane_port"] = 6443
+    ["timoni_bin_url"] =
+      "https://github.com/stefanprodan/timoni/releases/download/v0.20.0/timoni_0.20.0_linux_amd64.tar.gz"
+    ["timoni_filename"] = "{{ timoni_bin_url | basename }}"
+  }
+
+  handlers = new Listing {
+    new Ansible.Handler {
+      name = "restart kubelet"
+      `module` = "ansible.builtin.service"
+      params = new Mapping { ["name"] = "kubelet"; ["state"] = "restarted" }
+    }
+    new Ansible.Handler {
+      name = "restart containerd"
+      `module` = "ansible.builtin.service"
+      params = new Mapping { ["name"] = "containerd"; ["state"] = "restarted" }
+    }
+    new Ansible.Handler {
+      name = "restart haproxy"
+      `module` = "systemd"
+      params = new Mapping { ["name"] = "haproxy"; ["state"] = "restarted" }
+    }
+    new Ansible.Handler {
+      name = "reboot server"
+      `module` = "ansible.builtin.reboot"
+      params = new Mapping {
+        ["reboot_timeout"] = 300
+        ["msg"] = "Rebooting server to apply changes"
+        ["connect_timeout"] = 300
+        ["pre_reboot_delay"] = 30
+        ["post_reboot_delay"] = 30
+        ["test_command"] = "uptime"
+      }
+    }
+  }
+
+  templates = new Mapping {
+    ["kubeadm.yaml.j2"] = kubeadm.tpl
+    ["haproxy.cfg.j2"] = haproxy.tpl
+    ["containerd-config.toml.j2"] = containerd.tpl
+  }
+
+  taskFiles = new Mapping {
+    ["main"] = new Listing {
+      new Ansible.Task {
+        name = "Action"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "{{ action }}.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "{{ action }}" } }
+        }
+        `when` = "action is defined"
+      }
+      new Ansible.Task {
+        name = "Network"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "network.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "network" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "network" }
+      }
+      new Ansible.Task {
+        name = "Package"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "package.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "package" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "package" }
+      }
+      new Ansible.Task {
+        name = "Containerd"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "containerd.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "containerd" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "containerd" }
+      }
+      new Ansible.Task {
+        name = "Kubelet"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "kubelet.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "kubelet" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "kubelet" }
+      }
+      new Ansible.Task {
+        name = "HAProxy"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "haproxy.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "haproxy" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "haproxy" }
+      }
+      new Ansible.Task {
+        name = "Security"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "security.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "security" } }
+        }
+        `when` = "action is not defined"
+        tags = new Listing { "security" }
+      }
+    }
+
+    ["containerd"] = new Listing {
+      new Ansible.Task {
+        name = "Set containerd config"
+        `module` = "ansible.builtin.template"
+        params = new Mapping {
+          ["src"] = "containerd-config.toml.j2"
+          ["dest"] = "/etc/containerd/config.toml"
+          ["owner"] = "root"
+          ["group"] = "root"
+          ["mode"] = "0644"
+        }
+        notify = "restart containerd"
+      }
+      new Ansible.Task {
+        name = "Enable containerd service"
+        `module` = "ansible.builtin.systemd"
+        params = new Mapping {
+          ["name"] = "containerd"
+          ["state"] = "started"
+          ["enabled"] = true
+        }
+      }
+    }
+
+    ["create_join_command"] = new Listing {
+      new Ansible.Task {
+        name = "Create kubeadm join command"
+        `module` = "ansible.builtin.shell"
+        params = "kubeadm --kubeconfig /etc/kubernetes/admin.conf token create --print-join-command"
+        register = "kubeadm_join_command"
+        changed_when = "kubeadm_join_command.rc == 0"
+        failed_when = "kubeadm_join_command.rc != 0"
+        delegate_to = "{{ groups['control_plane'][0] }}"
+      }
+      new Ansible.Task {
+        name = "Create fact for kubeadm join command"
+        `module` = "ansible.builtin.set_fact"
+        params = new Mapping {
+          ["kubeadm_join_command"] = "{{ kubeadm_join_command.stdout }}"
+        }
+        `when` = "kubeadm_join_command is defined"
+      }
+      new Ansible.Task {
+        name = "Create kubeadm join command for control plane"
+        `module` = "ansible.builtin.shell"
+        params =
+          "echo $(kubeadm --kubeconfig /etc/kubernetes/admin.conf token create --print-join-command) --control-plane --certificate-key $(kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace)"
+        register = "kubeadm_join_command_control_plane"
+        changed_when = "kubeadm_join_command_control_plane.rc == 0"
+        failed_when = "kubeadm_join_command_control_plane.rc != 0"
+        delegate_to = "{{ groups['control_plane'][0] }}"
+      }
+      new Ansible.Task {
+        name = "Create fact for kubeadm join command for control plane"
+        `module` = "ansible.builtin.set_fact"
+        params = new Mapping {
+          ["kubeadm_join_command_control_plane"] = "{{ kubeadm_join_command_control_plane.stdout }}"
+        }
+        `when` = "kubeadm_join_command_control_plane is defined"
+      }
+    }
+
+    ["flux"] = new Listing {
+      new Ansible.Task {
+        name = "Download timoni archive"
+        `module` = "ansible.builtin.command"
+        params = "curl -L {{ timoni_bin_url }} -o /root/{{ timoni_filename }}"
+      }
+      new Ansible.Task {
+        name = "Extract timoni archive"
+        `module` = "ansible.builtin.command"
+        params = "tar -xzf /root/{{ timoni_filename }} -C /usr/bin/"
+      }
+      new Ansible.Task {
+        name = "Set timoni permissions"
+        `module` = "ansible.builtin.file"
+        params = new Mapping {
+          ["path"] = "/usr/bin/timoni"
+          ["mode"] = "0755"
+        }
+      }
+      new Ansible.Task {
+        name = "Deploy Flux AIO"
+        register = "flux_aio_manifests"
+        `module` = "ansible.builtin.shell"
+        params = "timoni bundle build -f -"
+        args = new Mapping {
+          ["stdin"] =
+            """
+            bundle: {
+                apiVersion: "v1alpha1"
+                name:       "flux-aio"
+                instances: {
+                    "flux": {
+                        module: url: "oci://ghcr.io/stefanprodan/modules/flux-aio"
+                        namespace: "flux-system"
+                        values: {
+                            controllers: {
+                                helm: enabled:         true
+                                kustomize: enabled:    true
+                                notification: enabled: true
+                            }
+                            hostNetwork:     true
+                            securityProfile: "privileged"
+                            env: {
+                              KUBERNETES_SERVICE_HOST: "127.0.0.1"
+                              KUBERNETES_SERVICE_PORT: "8443"
+                              SOURCE_CONTROLLER_LOCALHOST: "127.0.0.1:9790"
+                            }
+                        }
+                    }
+                }
+            }
+
+            """
+        }
+      }
+      new Ansible.Task {
+        name = "Apply Flux AIO manifests"
+        `module` = "ansible.builtin.shell"
+        params = "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
+        args = new Mapping {
+          ["stdin"] = "{{ flux_aio_manifests.stdout }}"
+        }
+        `when` = "flux_aio_manifests.rc == 0"
+      }
+      new Ansible.Task {
+        name = "Check for Flux secret resource"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system get secret flux-system"
+        register = "flux_secret_check"
+        failed_when = false
+      }
+      new Ansible.Task {
+        name = "Create Flux secret resource with username and password"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system create secret generic flux-system --from-literal=username={{ github_username }} --from-literal=password={{ github_pat }}"
+        `when` = "flux_secret_check is defined and flux_secret_check.rc != 0"
+      }
+      new Ansible.Task {
+        name = "Apply GitRepository and Kustomization manifests"
+        `module` = "ansible.builtin.shell"
+        params = "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
+        args = new Mapping {
+          ["stdin"] =
+            """
+            ---
+            apiVersion: source.toolkit.fluxcd.io/v1
+            kind: GitRepository
+            metadata:
+              name: flux-system
+              namespace: flux-system
+            spec:
+              interval: 1m
+              ref:
+                branch: main
+              secretRef:
+                name: flux-system
+              url: {{ flux_git_repo_url }}
+            ---
+            apiVersion: kustomize.toolkit.fluxcd.io/v1
+            kind: Kustomization
+            metadata:
+              name: flux-system
+              namespace: flux-system
+            spec:
+              interval: 1m
+              targetNamespace: flux-system
+              sourceRef:
+                kind: GitRepository
+                name: flux-system
+              path: "./_output/flux/{{ cluster_name }}"
+              prune: true
+              timeout: 1m
+
+            """
+        }
+      }
+    }
+
+    ["haproxy"] = new Listing {
+      new Ansible.Task {
+        name = "Install HAProxy"
+        `module` = "package"
+        params = new Mapping { ["name"] = "haproxy"; ["state"] = "present" }
+      }
+      new Ansible.Task {
+        name = "Create HAProxy configuration file"
+        `module` = "template"
+        params = new Mapping {
+          ["src"] = "haproxy.cfg.j2"
+          ["dest"] = "/etc/haproxy/conf.d/kube-apiserver.cfg"
+          ["mode"] = "0644"
+        }
+        notify = new Listing { "restart haproxy" }
+      }
+      new Ansible.Task {
+        name = "Enable and start HAProxy service"
+        `module` = "systemd"
+        params = new Mapping {
+          ["name"] = "haproxy"
+          ["state"] = "started"
+          ["enabled"] = "yes"
+        }
+      }
+    }
+
+    ["init"] = new Listing {
+      new Ansible.Task {
+        name = "Create kubeadm.yaml in /root/ for kubeadm init"
+        `module` = "ansible.builtin.template"
+        params = new Mapping {
+          ["src"] = "kubeadm.yaml.j2"
+          ["dest"] = "/root/kubeadm.yaml"
+          ["owner"] = "root"
+          ["group"] = "root"
+          ["mode"] = "0600"
+        }
+      }
+      new Ansible.Task {
+        name = "Check if kubernetes is already initialized"
+        `module` = "ansible.builtin.stat"
+        params = new Mapping { ["path"] = "/etc/kubernetes/admin.conf" }
+        register = "kubernetes_installed"
+      }
+      new Ansible.Task {
+        name = "Initialize Kubernetes Cluster"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubeadm init --upload-certs --skip-phases=addon/kube-proxy --config /root/kubeadm.yaml"
+        args = new Mapping { ["creates"] = "/etc/kubernetes/admin.conf" }
+        register = "kubeadm_init"
+        changed_when = "kubeadm_init.rc == 0"
+        failed_when = "kubeadm_init.rc != 0"
+        notify = "restart kubelet"
+        `when` =
+          "kubernetes_installed.stat is not defined or kubernetes_installed.stat.exists == false"
+      }
+      new Ansible.Task {
+        name = "Make /etc/kubernetes/admin.conf readable by wheel group"
+        `module` = "ansible.builtin.file"
+        params = new Mapping {
+          ["path"] = "/etc/kubernetes/admin.conf"
+          ["owner"] = "root"
+          ["group"] = "wheel"
+          ["mode"] = "0640"
+        }
+        `when` = "kubernetes_installed.stat.exists == true or kubeadm_init.rc == 0"
+      }
+    }
+
+    ["join"] = new Listing {
+      new Ansible.Task {
+        name = "Check if node is already joined to the cluster"
+        `module` = "ansible.builtin.stat"
+        params = new Mapping { ["path"] = "/etc/kubernetes/kubelet.conf" }
+        register = "kubernetes_joined"
+      }
+      new Ansible.Task {
+        name = "Run kubeadm_join_command on all nodes"
+        `module` = "ansible.builtin.shell"
+        params = "{{ kubeadm_join_command }}"
+        `when` =
+          "inventory_hostname not in groups['control_plane'] and kubernetes_joined.stat.exists == false"
+      }
+      new Ansible.Task {
+        name = "Run kubeadm_join_command_control_plane on control plane nodes"
+        `module` = "ansible.builtin.shell"
+        params = "{{ kubeadm_join_command_control_plane }}"
+        `when` =
+          "inventory_hostname in groups['control_plane'] and inventory_hostname != groups['control_plane'][0] and kubernetes_joined.stat.exists == false"
+      }
+      new Ansible.Task {
+        name = "Label nodes with each of their groups"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ inventory_hostname }} {{ item }}=yes"
+        `when` = "inventory_hostname in groups[item]"
+        with_items = "{{ groups.keys() }}"
+        delegate_to = "{{ groups['control_plane'][0] }}"
+      }
+    }
+
+    ["kubelet"] = new Listing {
+      new Ansible.Task {
+        name = "Disable swap"
+        `module` = "ansible.builtin.shell"
+        params = "swapoff -a\n"
+      }
+      new Ansible.Task {
+        name = "Remove swapfile from /etc/fstab"
+        `module` = "ansible.builtin.command"
+        params = "sed -i /swap/d /etc/fstab"
+      }
+      new Ansible.Task {
+        name = "Disable swap.target"
+        `module` = "ansible.builtin.systemd"
+        params = new Mapping {
+          ["name"] = "swap.target"
+          ["enabled"] = false
+          ["state"] = "stopped"
+          ["masked"] = true
+        }
+      }
+      new Ansible.Task {
+        name = "Custom Firewall Ports Enabled"
+        `module` = "ansible.posix.firewalld"
+        params = new Mapping {
+          ["port"] = "{{ item }}"
+          ["permanent"] = "yes"
+          ["immediate"] = "yes"
+          ["state"] = "enabled"
+        }
+        with_items = "{{ kube_ports }}"
+        `when` = "firewall_enabled"
+      }
+      new Ansible.Task {
+        name = "Start kubelet"
+        `module` = "ansible.builtin.systemd"
+        params = new Mapping {
+          ["name"] = "kubelet"
+          ["state"] = "started"
+          ["enabled"] = true
+        }
+      }
+      new Ansible.Task {
+        name = "Create kubectl bash completion config"
+        `module` = "ansible.builtin.shell"
+        params = new Mapping {
+          ["cmd"] = "kubectl completion bash > /etc/bash_completion.d/kubectl"
+          ["creates"] = "/etc/bash_completion.d/kubectl"
+        }
+      }
+    }
+
+    ["network"] = new Listing {
+      new Ansible.Task {
+        name = "If Firewall Is Enabled"
+        `when` = "firewall_enabled"
+        block = new Listing {
+          new Ansible.Task {
+            name = "Kubernetes Firewall Ports Enabled"
+            `module` = "ansible.posix.firewalld"
+            params = new Mapping {
+              ["port"] = "{{ item }}"
+              ["permanent"] = "yes"
+              ["immediate"] = "yes"
+              ["state"] = "enabled"
+            }
+            with_items = "{{ kube_ports }}"
+          }
+          new Ansible.Task {
+            name = "Add pod cidr to trusted zone"
+            `module` = "ansible.posix.firewalld"
+            params = new Mapping {
+              ["zone"] = "trusted"
+              ["source"] = "{{ kube_pod_cidr }}"
+              ["state"] = "enabled"
+              ["permanent"] = "yes"
+            }
+          }
+          new Ansible.Task {
+            name = "Add pod cidr to trusted zone"
+            `module` = "ansible.posix.firewalld"
+            params = new Mapping {
+              ["zone"] = "trusted"
+              ["source"] = "{{ kube_service_cidr }}"
+              ["state"] = "enabled"
+              ["permanent"] = "yes"
+            }
+          }
+          new Ansible.Task {
+            name = "Add forward to public zone"
+            `module` = "ansible.builtin.command"
+            params = new Mapping {
+              ["cmd"] = "firewall-cmd --permanent --zone=trusted --add-forward"
+            }
+          }
+        }
+      }
+    }
+
+    ["package"] = new Listing {
+      new Ansible.Task {
+        name = "Kubernetes"
+        `module` = "ansible.builtin.yum_repository"
+        params = new Mapping {
+          ["name"] = "kubernetes"
+          ["description"] = "Kubernetes"
+          ["baseurl"] =
+            "https://pkgs.k8s.io/core:/stable:/v{{ kube.version.split('.')[0] }}.{{ kube.version.split('.')[1] }}/rpm/"
+          ["gpgkey"] =
+            "https://pkgs.k8s.io/core:/stable:/v{{ kube.version.split('.')[0] }}.{{ kube.version.split('.')[1] }}/rpm/repodata/repomd.xml.key"
+          ["gpgcheck"] = "yes"
+          ["enabled"] = "yes"
+          ["exclude"] = "kubelet kubeadm kubectl"
+        }
+      }
+      new Ansible.Task {
+        name = "Install kube packages"
+        `module` = "ansible.builtin.package"
+        params = new Mapping {
+          ["name"] = "{{ item }}"
+          ["state"] = "installed"
+          ["disable_excludes"] = "all"
+        }
+        with_items = "{{ kube_packages }}"
+      }
+    }
+
+    ["reset"] = new Listing {
+      new Ansible.Task {
+        name = "Reset the kubelet"
+        `module` = "ansible.builtin.command"
+        params = "kubeadm reset -f"
+      }
+      new Ansible.Task {
+        name = "Remove /etc/kubernetes directory"
+        `module` = "ansible.builtin.file"
+        params = new Mapping { ["path"] = "/etc/kubernetes"; ["state"] = "absent" }
+      }
+      new Ansible.Task {
+        name = "Remove /var/lib/kubelet directory"
+        `module` = "ansible.builtin.file"
+        params = new Mapping { ["path"] = "/var/lib/kubelet"; ["state"] = "absent" }
+      }
+      new Ansible.Task {
+        name = "Remove /etc/cni directory"
+        `module` = "ansible.builtin.file"
+        params = new Mapping { ["path"] = "/etc/cni"; ["state"] = "absent" }
+      }
+      new Ansible.Task {
+        name = "Remove /opt/cni directory"
+        `module` = "ansible.builtin.file"
+        params = new Mapping { ["path"] = "/opt/cni"; ["state"] = "absent" }
+      }
+      new Ansible.Task {
+        name = "Remove /var/lib/cni directory"
+        `module` = "ansible.builtin.file"
+        params = new Mapping { ["path"] = "/var/lib/cni"; ["state"] = "absent" }
+      }
+      new Ansible.Task {
+        name = "Prune containerd containers"
+        `module` = "ansible.builtin.command"
+        params = "crictl ps -q | xargs crictl rm"
+      }
+      new Ansible.Task {
+        name = "Prune containerd images"
+        `module` = "ansible.builtin.command"
+        params = "crictl images -q | xargs crictl rmi"
+      }
+      new Ansible.Task {
+        name = "Flush firewall rules"
+        `module` = "ansible.builtin.command"
+        params = "firewall-cmd --complete-reload"
+        `when` = "firewall_enabled"
+      }
+    }
+
+    ["security"] = new Listing {
+      new Ansible.Task {
+        name = "Set SELinux to disabled"
+        `module` = "ansible.builtin.selinux"
+        params = new Mapping { ["state"] = "disabled" }
+        notify = "reboot server"
+      }
+    }
+  }
+}
