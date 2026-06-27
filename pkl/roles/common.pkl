@@ -200,7 +200,7 @@ role: Ansible.Role = new {
         params = new Mapping {
           ["path"] = "{{ item.path }}"
           ["state"] = "directory"
-          ["mode"] = 755
+          ["mode"] = "0755"
         }
         loop = "{{ mounts }}"
         `when` = "mounts | default([]) != []"
@@ -211,7 +211,7 @@ role: Ansible.Role = new {
         params = new Mapping {
           ["path"] = "{{ item.path }}"
           ["state"] = "directory"
-          ["mode"] = 755
+          ["mode"] = "0755"
         }
         loop = "{{ shared_mounts }}"
         `when` = "shared_mounts | default([]) != []"
