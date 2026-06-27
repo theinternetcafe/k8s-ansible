@@ -13,6 +13,11 @@
     ansible.posix.firewalld:
       zone: trusted
       source: "{{ kube_pod_cidr }}"
+      state: enabled
+      permanent: yes
+  - name: Add service cidr to trusted zone
+    ansible.posix.firewalld:
+      zone: trusted
       source: "{{ kube_service_cidr }}"
       state: enabled
       permanent: yes
