@@ -1,0 +1,11 @@
+module templates.common.disable_nm_dns
+
+import "../../Ansible.pkl"
+
+tpl: Ansible.JinjaTemplate = new {
+  content =
+    """
+    [main]
+    dns=none
+    """
+}

@@ -1,0 +1,18 @@
+module templates.common.resolv
+
+import "../../Ansible.pkl"
+
+tpl: Ansible.JinjaTemplate = new {
+  content =
+    """
+    {{ ansible_managed | comment }}
+    {% if dns.search is defined %}
+    search {{ dns.search }}
+    {% endif %}
+    {% if dns.nameservers is defined %}
+    {% for nameserver in dns.nameservers %}
+    nameserver {{ nameserver }}
+    {% endfor %}
+    {% endif %}
+    """
+}

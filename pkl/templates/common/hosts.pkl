@@ -1,0 +1,15 @@
+module templates.common.hosts
+
+import "../../Ansible.pkl"
+
+tpl: Ansible.JinjaTemplate = new {
+  content =
+    """
+    {{ ansible_managed | comment }}
+    {% if dns.hosts is defined %}
+    {% for host in dns.hosts %}
+    {{ host }}
+    {% endfor %}
+    {% endif %}
+    """
+}
