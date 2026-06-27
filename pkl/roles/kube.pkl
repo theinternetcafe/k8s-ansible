@@ -508,7 +508,7 @@ role: Ansible.Role = new {
             }
           }
           new Ansible.Task {
-            name = "Add pod cidr to trusted zone"
+            name = "Add service cidr to trusted zone"
             `module` = "ansible.posix.firewalld"
             params = new Mapping {
               ["zone"] = "trusted"
