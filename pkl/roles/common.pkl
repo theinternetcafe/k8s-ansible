@@ -1,0 +1,430 @@
+/// The `common` role modeled as typed Pkl data.
+module roles.common
+
+import "../Ansible.pkl"
+import "../templates/common/disable-nm-dns.pkl" as disable_nm_dns
+import "../templates/common/hosts.pkl" as hosts
+import "../templates/common/resolv.pkl" as resolv
+
+role: Ansible.Role = new {
+  name = "common"
+
+  defaults = new Mapping {
+    ["firewall_enabled"] = true
+    ["common_packages"] = new Listing {
+      "rsync"
+      "dnsutils"
+      "git"
+      "nfs-utils"
+      "tar"
+      "python3-pip"
+    }
+    ["common_ports"] = new Listing { "22/tcp" }
+    ["nfs_ports"] = new Listing { "111/tcp"; "111/udp"; "2049/tcp"; "2049/udp" }
+  }
+
+  handlers = new Listing {
+    new Ansible.Handler {
+      name = "restart nfs"
+      `module` = "ansible.builtin.service"
+      params = new Mapping { ["name"] = "nfs-server"; ["state"] = "restarted" }
+    }
+    new Ansible.Handler {
+      name = "dnf makecache"
+      `module` = "ansible.builtin.command"
+      params = "dnf makecache --refresh"
+    }
+    new Ansible.Handler {
+      name = "restart NetworkManager"
+      `module` = "ansible.builtin.service"
+      params = new Mapping { ["name"] = "NetworkManager"; ["state"] = "restarted" }
+    }
+    new Ansible.Handler {
+      name = "reboot"
+      `module` = "ansible.builtin.reboot"
+      params = new Mapping { ["msg"] = "Reboot initiated by Ansible" }
+    }
+  }
+
+  templates = new Mapping {
+    ["90-disable-nm-dns.conf.j2"] = disable_nm_dns.tpl
+    ["hosts.j2"] = hosts.tpl
+    ["resolv.conf.j2"] = resolv.tpl
+  }
+
+  taskFiles = new Mapping {
+    ["main"] = new Listing {
+      new Ansible.Task {
+        name = "Package"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "package.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "package" } }
+        }
+        tags = new Listing { "package" }
+      }
+      new Ansible.Task {
+        name = "Nvidia"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "nvidia.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "nvidia" } }
+        }
+        tags = new Listing { "nvidia" }
+        `when` = "gpu_manufacturer == 'nvidia'"
+      }
+      new Ansible.Task {
+        name = "Storage"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "storage.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "storage" } }
+        }
+        tags = new Listing { "storage" }
+      }
+      new Ansible.Task {
+        name = "Network"
+        `module` = "include_tasks"
+        params = new Mapping {
+          ["file"] = "network.yml"
+          ["apply"] = new Mapping { ["tags"] = new Listing { "network" } }
+        }
+        tags = new Listing { "network" }
+      }
+    }
+
+    ["package"] = new Listing {
+      new Ansible.Task {
+        name = "Repos"
+        notify = "dnf makecache"
+        block = new Listing {
+          new Ansible.Task {
+            name = "EPEL"
+            `module` = "ansible.builtin.package"
+            params = new Mapping { ["name"] = "epel-release"; ["state"] = "latest" }
+          }
+          new Ansible.Task {
+            name = "Docker"
+            `module` = "ansible.builtin.yum_repository"
+            params = new Mapping {
+              ["name"] = "docker-ce-stable"
+              ["description"] = "Docker"
+              ["baseurl"] = "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
+              ["gpgkey"] = "https://download.docker.com/linux/centos/gpg"
+              ["gpgcheck"] = "yes"
+              ["enabled"] = "yes"
+            }
+          }
+        }
+      }
+      new Ansible.Task {
+        name = "Install elrepo repo"
+        `module` = "ansible.builtin.yum_repository"
+        params = new Mapping {
+          ["name"] = "elrepo-kernel"
+          ["description"] = "ELRepo.org Community Enterprise Linux Repository"
+          ["baseurl"] = "http://elrepo.org/linux/kernel/el9/$basearch/"
+          ["gpgkey"] = "https://elrepo.org/RPM-GPG-KEY-elrepo.org"
+          ["gpgcheck"] = "yes"
+          ["enabled"] = "yes"
+        }
+        `when` = "btrfs.enabled is defined and btrfs.enabled"
+      }
+      new Ansible.Task {
+        name = "Update system"
+        `module` = "ansible.builtin.command"
+        params = "dnf update -y"
+      }
+      new Ansible.Task {
+        name = "restart NetworkManager"
+        `module` = "ansible.builtin.service"
+        params = new Mapping { ["name"] = "NetworkManager"; ["state"] = "restarted" }
+      }
+      new Ansible.Task {
+        name = "Install common packages"
+        `module` = "ansible.builtin.package"
+        params = new Mapping { ["name"] = "{{ item }}"; ["state"] = "present" }
+        with_items = "{{ common_packages }}"
+        `when` = "common_packages is defined"
+      }
+    }
+
+    ["nvidia"] = new Listing {
+      new Ansible.Task {
+        name = "cuda-rhel9 Repo setup"
+        `module` = "ansible.builtin.yum_repository"
+        params = new Mapping {
+          ["name"] = "cuda-rhel9"
+          ["description"] = "cuda dependencies which are needed for nvidia drivers"
+          ["baseurl"] = "https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64"
+          ["gpgcheck"] = true
+          ["gpgkey"] =
+            "https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/D42D0685.pub"
+        }
+      }
+      new Ansible.Task {
+        name = "Install the nvidia-driver-cuda package"
+        `module` = "ansible.builtin.dnf"
+        params = new Mapping { ["name"] = "@Development tools"; ["state"] = "present" }
+      }
+      new Ansible.Task {
+        name = "libnvidia-container Repo setup"
+        `module` = "ansible.builtin.yum_repository"
+        params = new Mapping {
+          ["name"] = "libnvidia-container"
+          ["description"] =
+            "nvidia-container dependencies which are needed for passing gpu through CRI"
+          ["baseurl"] = "https://nvidia.github.io/libnvidia-container/stable/centos7/$basearch"
+          ["gpgcheck"] = true
+          ["gpgkey"] = "https://nvidia.github.io/libnvidia-container/gpgkey"
+        }
+      }
+      new Ansible.Task {
+        name = "Install nvidia-container-toolkit"
+        `module` = "ansible.builtin.dnf"
+        params = new Mapping { ["name"] = "nvidia-container-toolkit"; ["state"] = "present" }
+      }
+    }
+
+    ["storage"] = new Listing {
+      new Ansible.Task {
+        name = "Install elrepo kernel"
+        `module` = "ansible.builtin.package"
+        params = new Mapping { ["name"] = "kernel-ml"; ["state"] = "latest" }
+        `when` = "btrfs.enabled is defined and btrfs.enabled"
+        notify = "reboot"
+      }
+      new Ansible.Task {
+        name = "Create unique mount directories"
+        `module` = "ansible.builtin.file"
+        params = new Mapping {
+          ["path"] = "{{ item.path }}"
+          ["state"] = "directory"
+          ["mode"] = 755
+        }
+        loop = "{{ mounts }}"
+        `when` = "mounts | default([]) != []"
+      }
+      new Ansible.Task {
+        name = "Create shared mount directories"
+        `module` = "ansible.builtin.file"
+        params = new Mapping {
+          ["path"] = "{{ item.path }}"
+          ["state"] = "directory"
+          ["mode"] = 755
+        }
+        loop = "{{ shared_mounts }}"
+        `when` = "shared_mounts | default([]) != []"
+      }
+      new Ansible.Task {
+        name = "Create unique mounts"
+        `module` = "ansible.posix.mount"
+        params = new Mapping {
+          ["fstype"] = "{{ item.fstype }}"
+          ["opts"] = "{{ item.opts }}"
+          ["path"] = "{{ item.path }}"
+          ["src"] = "{{ item.src }}"
+          ["state"] = "{{ item.state }}"
+        }
+        failed_when = false
+        loop = "{{ mounts }}"
+        `when` = "mounts | default([]) != []"
+      }
+      new Ansible.Task {
+        name = "Create shared mounts"
+        `module` = "ansible.posix.mount"
+        params = new Mapping {
+          ["fstype"] = "{{ item.fstype }}"
+          ["opts"] = "{{ item.opts }}"
+          ["path"] = "{{ item.path }}"
+          ["src"] = "{{ item.src }}"
+          ["state"] = "{{ item.state }}"
+        }
+        failed_when = false
+        loop = "{{ shared_mounts }}"
+        `when` = "shared_mounts | default([]) != []"
+      }
+      new Ansible.Task {
+        name = "Remove swapfile from /etc/fstab"
+        `module` = "ansible.builtin.command"
+        params = "sed -i /swap/d /etc/fstab"
+      }
+      new Ansible.Task {
+        name = "Run swapoff"
+        `module` = "ansible.builtin.shell"
+        params = "swapoff -a"
+        `when` = "ansible_facts[\"swaptotal_mb\"] > 0"
+      }
+      new Ansible.Task {
+        name = "NFS"
+        `when` = "exports | default([]) != []"
+        block = new Listing {
+          new Ansible.Task {
+            name = "Create exports"
+            `module` = "ansible.builtin.lineinfile"
+            params = new Mapping {
+              ["path"] = "/etc/exports"
+              ["state"] = "present"
+              ["line"] = "{{ item }}"
+            }
+            with_items = "{{ exports }}"
+            `when` = "exports | default([]) != []"
+            notify = "restart nfs"
+          }
+          new Ansible.Task {
+            name = "Install nfs-server"
+            `module` = "ansible.builtin.package"
+            params = new Mapping { ["name"] = "nfs-utils"; ["state"] = "latest" }
+            notify = "restart nfs"
+          }
+          new Ansible.Task {
+            `module` = "ansible.builtin.service"
+            params = new Mapping { ["name"] = "nfs-server"; ["state"] = "started" }
+          }
+        }
+      }
+    }
+
+    ["network"] = new Listing {
+      new Ansible.Task {
+        name = "Create networkmanager interface"
+        `module` = "community.general.nmcli"
+        params = new Mapping {
+          ["conn_name"] = "{{ item.conn_name }}"
+          ["ifname"] = "{{ item.ifname }}"
+          ["ip4"] = "{{ item.ip4 | default(omit) }}"
+          ["gw4"] = "{{ item.gw4 | default(omit) }}"
+          ["dns4"] = "{{ item.dns4 | default(omit) }}"
+          ["dns4_search"] = "{{ item.dns4_search | default(omit) }}"
+          ["method4"] = "{{ item.method4 | default(omit) }}"
+          ["master"] = "{{ item.master  | default(omit) }}"
+          ["state"] = "{{ item.state if item.state is defined else 'present' }}"
+          ["type"] = "{{ item.type if item.type is defined else 'ethernet' }}"
+          ["ip6"] = "{{ item.ip6 | default(omit) }}"
+          ["gw6"] = "{{ item.gw6 | default(omit) }}"
+          ["dns6"] = "{{ item.dns6 | default(omit) }}"
+          ["dns6_search"] = "{{ item.dns6_search | default(omit) }}"
+          ["method6"] = "{{ item.method6 | default(omit) }}"
+          ["hairpin"] = "{{ item.hairpin | default(omit) }}"
+          ["mtu"] = "{{ item.mtu | default(omit) }}"
+        }
+        with_items = "{{ ethernet }}"
+        `when` = "ethernet is defined"
+      }
+      new Ansible.Task {
+        name = "Overlay Module"
+        `module` = "community.general.modprobe"
+        params = new Mapping { ["name"] = "{{ item }}"; ["state"] = "present" }
+        with_items = new Listing { "overlay"; "br_netfilter" }
+      }
+      new Ansible.Task {
+        name = "Create kube-deps.conf"
+        `module` = "ansible.builtin.copy"
+        params = new Mapping {
+          ["content"] = "overlay\nbr_netfilter"
+          ["dest"] = "/etc/modules-load.d/kube-deps.conf"
+        }
+      }
+      new Ansible.Task {
+        name = "IP Forwarding"
+        `module` = "ansible.posix.sysctl"
+        params = new Mapping { ["name"] = "{{ item }}"; ["value"] = "1" }
+        with_items = new Listing {
+          "net.ipv4.ip_forward"
+          "net.bridge.bridge-nf-call-ip6tables"
+          "net.bridge.bridge-nf-call-iptables"
+        }
+      }
+      new Ansible.Task {
+        name = "Disable Return Path Filtering"
+        `module` = "ansible.posix.sysctl"
+        params = new Mapping { ["name"] = "{{ item }}"; ["value"] = "0" }
+        with_items = new Listing {
+          "net.ipv4.conf.default.rp_filter"
+          "net.ipv4.conf.all.rp_filter"
+          "net.ipv4.conf.lo.rp_filter"
+        }
+      }
+      new Ansible.Task {
+        name = "Enable Firewalld"
+        `module` = "ansible.builtin.service"
+        params = new Mapping { ["name"] = "firewalld"; ["state"] = "started"; ["enabled"] = "yes" }
+        `when` = "firewall_enabled"
+      }
+      new Ansible.Task {
+        name = "Disable Firewalld"
+        `module` = "ansible.builtin.service"
+        params = new Mapping { ["name"] = "firewalld"; ["state"] = "stopped"; ["enabled"] = "no" }
+        `when` = "not firewall_enabled"
+      }
+      new Ansible.Task {
+        name = "Common Firewall Ports Enabled"
+        `module` = "ansible.posix.firewalld"
+        params = new Mapping {
+          ["port"] = "{{ item }}"
+          ["permanent"] = "yes"
+          ["immediate"] = "yes"
+          ["state"] = "enabled"
+        }
+        with_items = "{{ common_ports }}"
+        `when` = "firewall_enabled"
+      }
+      new Ansible.Task {
+        name = "NFS Firewall Ports Enabled"
+        `module` = "ansible.posix.firewalld"
+        params = new Mapping {
+          ["port"] = "{{ item }}"
+          ["permanent"] = "yes"
+          ["immediate"] = "yes"
+          ["state"] = "enabled"
+        }
+        with_items = "{{ nfs_ports }}"
+        `when` = "firewall_enabled and exports | default([]) != []"
+      }
+      new Ansible.Task {
+        name = "Disable NetworkManager control of DNS"
+        `module` = "ansible.builtin.template"
+        params = new Mapping {
+          ["src"] = "90-disable-nm-dns.conf.j2"
+          ["dest"] = "/etc/NetworkManager/conf.d/90-disable-nm-dns.conf"
+          ["owner"] = "root"
+          ["group"] = "root"
+          ["mode"] = "0644"
+        }
+        notify = "restart NetworkManager"
+      }
+      new Ansible.Task {
+        name = "Enable nameservers"
+        `module` = "ansible.builtin.template"
+        params = new Mapping {
+          ["src"] = "resolv.conf.j2"
+          ["dest"] = "/etc/resolv.conf"
+          ["owner"] = "root"
+          ["group"] = "root"
+          ["mode"] = "0644"
+        }
+        `when` = "dns is defined and dns.nameservers is defined"
+      }
+      new Ansible.Task {
+        name = "Enable hosts file"
+        `module` = "ansible.builtin.template"
+        params = new Mapping {
+          ["src"] = "hosts.j2"
+          ["dest"] = "/etc/hosts"
+          ["owner"] = "root"
+          ["group"] = "root"
+          ["mode"] = "0644"
+        }
+        `when` = "dns is defined and dns.hosts is defined"
+      }
+    }
+
+    ["limits"] = new Listing {
+      new Ansible.Task {
+        name = "IP Forwarding"
+        `module` = "ansible.posix.sysctl"
+        params = new Mapping { ["name"] = "fs.inotify.max_user_watches"; ["value"] = "1024" }
+      }
+    }
+  }
+}
