@@ -123,7 +123,9 @@ function renderRole(r: Role): Mapping<String, FileOutput> = new Mapping {
   }
 }
 
-function renderPlaybook(name: String, plays: Listing<Play>): FileOutput = new FileOutput {
-  value = new Listing { for (p in plays) { playToYaml(p) } }
-  renderer = new YamlRenderer {}
+function renderPlaybook(name: String, plays: Listing<Play>): Mapping<String, FileOutput> = new Mapping {
+  ["playbooks/\(name).yml"] = new FileOutput {
+    value = new Listing { for (p in plays) { playToYaml(p) } }
+    renderer = new YamlRenderer {}
+  }
 }

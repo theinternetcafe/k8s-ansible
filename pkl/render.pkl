@@ -1,0 +1,28 @@
+/// Renders the upstream roles + playbooks to an `ansible`-shaped file tree.
+/// `pkl eval -m <dir> render.pkl` reproduces roles/ and playbooks/.
+module render
+
+import "Ansible.pkl"
+import "playbooks/common.pkl" as pbCommon
+import "playbooks/kube.pkl" as pbKube
+import "playbooks/kube_flux.pkl" as pbFlux
+import "playbooks/kube_init.pkl" as pbInit
+import "playbooks/kube_join.pkl" as pbJoin
+import "playbooks/kube_reset.pkl" as pbReset
+import "playbooks/restart.pkl" as pbRestart
+import "roles/common.pkl" as common
+import "roles/kube.pkl" as kube
+
+output {
+  files {
+    ...Ansible.renderRole(common.role)
+    ...Ansible.renderRole(kube.role)
+    ...Ansible.renderPlaybook("common", pbCommon.plays)
+    ...Ansible.renderPlaybook("kube", pbKube.plays)
+    ...Ansible.renderPlaybook("kube_flux", pbFlux.plays)
+    ...Ansible.renderPlaybook("kube_init", pbInit.plays)
+    ...Ansible.renderPlaybook("kube_join", pbJoin.plays)
+    ...Ansible.renderPlaybook("kube_reset", pbReset.plays)
+    ...Ansible.renderPlaybook("restart", pbRestart.plays)
+  }
+}
