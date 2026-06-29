@@ -1,0 +1,14 @@
+import "../Ansible.pkl"
+
+plays: Listing<Ansible.Play> = new {
+  new {
+    hosts = "all"
+    tasks = new Listing {
+      new Ansible.Task {
+        name = "Reboot the server"
+        `module` = "ansible.builtin.reboot"
+        params = new Mapping {}
+      }
+    }
+  }
+}

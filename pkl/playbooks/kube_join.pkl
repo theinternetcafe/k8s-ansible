@@ -1,0 +1,22 @@
+import "../Ansible.pkl"
+
+plays: Listing<Ansible.Play> = new {
+  new {
+    hosts = "all"
+    run_once = true
+    roles = new Listing { "kube" }
+    vars = new Mapping { ["action"] = "create_join_command" }
+  }
+  new {
+    hosts = "control_plane"
+    gather_facts = false
+    roles = new Listing { "kube" }
+    vars = new Mapping { ["action"] = "join" }
+  }
+  new {
+    hosts = "all:!control_plane"
+    gather_facts = false
+    roles = new Listing { "kube" }
+    vars = new Mapping { ["action"] = "join" }
+  }
+}

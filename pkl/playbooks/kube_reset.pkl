@@ -1,0 +1,9 @@
+import "../Ansible.pkl"
+
+plays: Listing<Ansible.Play> = new {
+  new {
+    hosts = "all"
+    roles = new Listing { "kube" }
+    vars = new Mapping { ["action"] = "reset" }
+  }
+}

@@ -2,5 +2,6 @@
 - hosts: all
   become: true
   roles:
+    - cf_custom
     - common
     - kube
