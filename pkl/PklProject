@@ -1,0 +1,12 @@
+/// Declares this directory as the `k8s_ansible` Pkl package: the canonical
+/// schema (`Ansible.pkl`), roles, playbooks, templates, and aggregate
+/// `render.pkl`. Downstream projects depend on it locally via a relative
+/// `import("…/PklProject")` and consume modules as `@k8s_ansible/…`.
+amends "pkl:Project"
+
+package {
+  name = "k8s_ansible"
+  baseUri = "package://github.com/theinternetcafe/k8s-ansible/pkl"
+  version = "0.1.0"
+  packageZipUrl = "https://github.com/theinternetcafe/k8s-ansible/releases/download/pkl-\(version)/k8s_ansible@\(version).zip"
+}
