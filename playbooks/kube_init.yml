@@ -1,6 +1,0 @@
----
-- hosts: "{{ groups['control_plane'] | first }}"
-  roles:
-    - kube
-  vars:
-    action: init

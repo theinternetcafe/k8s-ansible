@@ -270,6 +270,7 @@ role: Ansible.Role = new {
         }
         `when` = "flux_aio_manifests.rc == 0"
       }
+      // --- Git source (flux_source_kind == "git") ---
       new Ansible.Task {
         name = "Check for Flux secret resource"
         `module` = "ansible.builtin.shell"
@@ -277,18 +278,20 @@ role: Ansible.Role = new {
           "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system get secret flux-system"
         register = "flux_secret_check"
         failed_when = false
+        `when` = "flux_source_kind == 'git'"
       }
       new Ansible.Task {
         name = "Create Flux secret resource with username and password"
         `module` = "ansible.builtin.shell"
         params =
           "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system create secret generic flux-system --from-literal=username={{ github_username }} --from-literal=password={{ github_pat }}"
-        `when` = "flux_secret_check is defined and flux_secret_check.rc != 0"
+        `when` = "flux_source_kind == 'git' and flux_secret_check is defined and flux_secret_check.rc != 0"
       }
       new Ansible.Task {
         name = "Apply GitRepository and Kustomization manifests"
         `module` = "ansible.builtin.shell"
         params = "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
+        `when` = "flux_source_kind == 'git'"
         args = new Mapping {
           ["stdin"] =
             """
@@ -316,6 +319,66 @@ role: Ansible.Role = new {
               targetNamespace: flux-system
               sourceRef:
                 kind: GitRepository
+                name: flux-system
+              path: "./_output/flux/{{ cluster_name }}"
+              prune: true
+              timeout: 1m
+
+            """
+        }
+      }
+      // --- OCI source (flux_source_kind == "oci") ---
+      // Pulls the pushed _output/flux/<cluster> artifact from GHCR. Kustomization is
+      // byte-identical to the git one apart from sourceRef.kind, so the same path:
+      // resolves against the artifact (staged to preserve _output/flux/<cluster>).
+      new Ansible.Task {
+        name = "Check for GHCR auth secret"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system get secret ghcr-auth"
+        register = "ghcr_secret_check"
+        failed_when = false
+        `when` = "flux_source_kind == 'oci'"
+      }
+      new Ansible.Task {
+        name = "Create GHCR auth secret for OCIRepository pulls"
+        `module` = "ansible.builtin.shell"
+        params =
+          "kubectl --kubeconfig /etc/kubernetes/admin.conf -n flux-system create secret docker-registry ghcr-auth --docker-server=ghcr.io --docker-username={{ github_username }} --docker-password={{ github_pat }}"
+        `when` = "flux_source_kind == 'oci' and ghcr_secret_check is defined and ghcr_secret_check.rc != 0"
+      }
+      new Ansible.Task {
+        name = "Apply OCIRepository and Kustomization manifests"
+        `module` = "ansible.builtin.shell"
+        params = "kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -"
+        `when` = "flux_source_kind == 'oci'"
+        args = new Mapping {
+          ["stdin"] =
+            """
+            ---
+            apiVersion: source.toolkit.fluxcd.io/v1
+            kind: OCIRepository
+            metadata:
+              name: flux-system
+              namespace: flux-system
+            spec:
+              interval: 1m
+              url: {{ flux_oci_repo_url }}
+              ref:
+                tag: {{ cluster_name }}
+              secretRef:
+                name: ghcr-auth
+            ---
+            apiVersion: kustomize.toolkit.fluxcd.io/v1
+            kind: Kustomization
+            metadata:
+              name: flux-system
+              namespace: flux-system
+            spec:
+              interval: 1m
+              targetNamespace: flux-system
+              sourceRef:
+                kind: OCIRepository
                 name: flux-system
               path: "./_output/flux/{{ cluster_name }}"
               prune: true

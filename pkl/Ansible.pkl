@@ -101,7 +101,10 @@ function renderRole(r: Role): Mapping<String, FileOutput> = new Mapping {
   when (r.defaults != null) {
     ["roles/\(r.name)/defaults/main.yml"] = new FileOutput {
       value = r.defaults
-      renderer = new YamlRenderer {}
+      // Keep explicit null defaults (e.g. `gpu_manufacturer: null`): role
+      // defaults document every overridable var, and Ansible treats a null
+      // default as "defined". The YamlRenderer otherwise omits null entries.
+      renderer = new YamlRenderer { omitNullProperties = false }
     }
   }
   for (fileName, tasks in r.taskFiles) {

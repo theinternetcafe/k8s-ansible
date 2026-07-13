@@ -1,6 +1,0 @@
----
-- hosts: all
-  roles:
-    - kube
-  vars:
-    action: reset

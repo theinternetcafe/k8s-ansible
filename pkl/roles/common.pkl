@@ -20,6 +20,7 @@ role: Ansible.Role = new {
       "python3-pip"
     }
     ["common_ports"] = new Listing { "22/tcp" }
+    ["gpu_manufacturer"] = null
     ["nfs_ports"] = new Listing { "111/tcp"; "111/udp"; "2049/tcp"; "2049/udp" }
   }
 
@@ -123,9 +124,16 @@ role: Ansible.Role = new {
         params = new Mapping {
           ["name"] = "elrepo-kernel"
           ["description"] = "ELRepo.org Community Enterprise Linux Repository"
-          ["baseurl"] = "http://elrepo.org/linux/kernel/el9/$basearch/"
-          ["gpgkey"] = "https://elrepo.org/RPM-GPG-KEY-elrepo.org"
-          ["gpgcheck"] = "yes"
+          // btrfs hosts get btrfs ONLY from elrepo's kernel-ml mainline kernel — the
+          // stock RHEL/Rocky kernel ships no btrfs module (Red Hat dropped it). el$releasever
+          // (not hardcoded el9) so el10 pulls el10-built packages.
+          ["baseurl"] = "https://elrepo.org/linux/kernel/el$releasever/$basearch/"
+          // Only serve the kernel; never let elrepo-kernel hijack python3-perf etc.
+          ["includepkgs"] = "kernel-ml*"
+          // gpgcheck off: EL10's rpm-sequoia rejects ELRepo's SHA-1-signed key
+          // ("No binding signature"), which aborts `dnf update`. Scoped to this one
+          // kernel-ml* repo; baseurl is https so transport stays encrypted.
+          ["gpgcheck"] = "no"
           ["enabled"] = "yes"
         }
         `when` = "btrfs.enabled is defined and btrfs.enabled"
@@ -191,6 +199,7 @@ role: Ansible.Role = new {
         name = "Install elrepo kernel"
         `module` = "ansible.builtin.package"
         params = new Mapping { ["name"] = "kernel-ml"; ["state"] = "latest" }
+        // Provides the btrfs module the stock RHEL/Rocky kernel lacks; reboot into it.
         `when` = "btrfs.enabled is defined and btrfs.enabled"
         notify = "reboot"
       }

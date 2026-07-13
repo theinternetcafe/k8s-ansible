@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     musl-dev \
     libffi-dev \
     openssl-dev \
-    python3-dev
+    python3-dev \
+    rsync
 
 # Install latest Python dependencies
 RUN pip3 install --upgrade pip && \
